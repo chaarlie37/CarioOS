@@ -29,7 +29,7 @@ int main(void) {
         line = tokenize(buf);
 
         pipe(fd);
-        pid = fork();
+
         if (line==NULL) {
     		continue;
     	}
@@ -88,8 +88,28 @@ int main(void) {
                 else{
                     hijos[i] = pid;
                 }
+                //kill(hijos[i], SIGUSR2);
+
+                if(line->ncommands - 1 - i % 2 == 0){   //mandatos pares
+                    printf("Pares %d\n", i);
+                    kill(hijos[line->ncommands - 1 - i], SIGUSR2);
+                }
+                else    // mandatos impares
+                {
+                    printf("Impares %d\n", i);
+                    sleep(0.5);
+                    kill(hijos[line->ncommands - 1 - i], SIGUSR1);
+                }
+
+            }
+            for (i=line->ncommands-1; i>=0; i--) {
+
             }
 
+
+
+
+            /*
             if(line->ncommands == 1){
                 printf("%d\n", line->ncommands);
                 sleep(0.5);
@@ -98,6 +118,7 @@ int main(void) {
                 cont = 0;
                 kill(hijos[0], SIGUSR2);
             }
+            */
             wait(pid);
         }
 
@@ -108,53 +129,120 @@ int main(void) {
 	return 0;
 }
 
-void manejador_hijo(int sig){//Aqui se ejecutan los comandos
-    if(sig == SIGUSR1){
-      if(execvp(line->commands[0].argv[0], line->commands[0].argv)< 0){
-          char buff[1024];
-          char *salida = "No se ha encontrado el mandato\n";
-          strcpy(buff, salida);
-          fputs(buff, stderr);
-        }
-    }else if(sig == SIGUSR2){
-        if(cont != line->ncommands-1 && cont != 0){
-            close(pipe_des1[0]);
-            close(pipe_des2[1]);
-            close(STDIN_FILENO);
-            dup(pipe_des2[0]);
-            close(STDOUT_FILENO);
-            dup(pipe_des1[1]);
 
-            if(execvp(line->commands[0].argv[0], line->commands[0].argv)< 0){
-                printf("Error al ejecutar el comando %s\n", line->commands[cont]);
-            }
+        void manejador_hijo(int sig){//Aqui se ejecutan los comandos
+            if(sig == SIGUSR2){     // si el mandato i es impar
+                if(line->ncommands == 1){ // si hay solo un mandato (no hay pipes)
+                  if(execvp(line->commands[0].argv[0], line->commands[0].argv)< 0){
+                      char buff[1024];
+                      char *salida = "No se ha encontrado el mandato\n";
+                      strcpy(buff, salida);
+                      fputs(buff, stderr);
+                    }
+                }
+                else
+                {
+                    if(i == 0){
+                        close(pipe_des1[0]);        // pipe solo de escritura
+                        close(STDOUT_FILENO);
+                        dup(pipe_des1[1]);
+                        //close(pipe_des1[1]);
 
-            kill(SIGUSR2, hijos[cont+1]);
-        }else if(cont == 0){
-            close(pipe_des2[0]);
-            close(pipe_des2[1]);
-            close(pipe_des1[0]);
-            close(STDOUT_FILENO);
-            dup(pipe_des1[1]);
-            if(execvp(line->commands[0].argv[0], line->commands[0].argv)< 0){
-                printf("Error al ejecutar el comando %s\n", line->commands[cont]);
-            }
-            kill(SIGUSR2, hijos[cont+1]);
-        }else{
-            close(pipe_des2[1]);
-            close(STDIN_FILENO);
-            dup(pipe_des2[0]);
-            close(pipe_des1[1]);
-            dup(STDOUT_FILENO);
-            close(pipe_des1[0]);
+                        execvp(line->commands[i].argv[0], line->commands[i].argv);
+                    }
+                    else if(i>0 && i<line->ncommands-1)
+                    {
 
-            if(execvp(line->commands[0].argv[0], line->commands[0].argv)< 0){
-                printf("Error al ejecutar el comando %s\n", line->commands[cont]);
-            }
-            kill(SIGUSR2, hijos[cont+1]);
-        }
+                        close(pipe_des2[1]);
+                        close(STDIN_FILENO);
+                        dup(pipe_des2[0]);
+                        //close(pipe_des2[0]);
+
+                        close(pipe_des1[0]);        // pipe solo de escritura
+                        close(STDOUT_FILENO);
+                        dup(pipe_des1[1]);
+                        //close(pipe_des1[1]);
+
+                        execvp(line->commands[i].argv[0], line->commands[i].argv);
+                    }
+                    else
+                    {
+                        close(pipe_des2[1]);
+                        close(STDIN_FILENO);
+                        dup(pipe_des2[0]);
+                        close(pipe_des2[0]);
+
+                        execvp(line->commands[i].argv[0], line->commands[i].argv);
+                    }
+
+                }
 
 
+            }else if(sig == SIGUSR1){
+
+
+                if(i>0 && i<line->ncommands-1)
+                {
+                    close(pipe_des1[1]);
+                    close(STDIN_FILENO);
+                    dup(pipe_des1[0]);
+                    //close(pipe_des1[0]);
+
+                    close(pipe_des2[0]);        // pipe solo de escritura
+                    close(STDOUT_FILENO);
+                    dup(pipe_des2[1]);
+                    //close(pipe_des2[1]);
+
+                    execvp(line->commands[i].argv[0], line->commands[i].argv);
+                }
+                else
+                {
+                    close(pipe_des1[1]);
+                    close(STDIN_FILENO);
+                    dup(pipe_des1[0]);
+                    //close(pipe_des1[0]);
+
+                    execvp(line->commands[i].argv[0], line->commands[i].argv);
+                }
+
+
+        /*
+
+                if(cont != line->ncommands-1 && cont != 0){
+                    close(pipe_des1[0]);
+                    close(pipe_des2[1]);
+                    close(STDIN_FILENO);
+                    dup(pipe_des2[0]);
+                    close(STDOUT_FILENO);
+                    dup(pipe_des1[1]);
+
+                    if(execvp(line->commands[0].argv[0], line->commands[0].argv)< 0){
+                        printf("Error al ejecutar el comando %s\n", line->commands[cont]);
+                    }
+                    kill(SIGUSR2, hijos[cont+1]);
+                }else if(cont == 0){
+                    close(pipe_des2[0]);
+                    close(pipe_des2[1]);
+                    close(pipe_des1[0]);
+                    close(STDOUT_FILENO);
+                    dup(pipe_des1[1]);
+                    if(execvp(line->commands[0].argv[0], line->commands[0].argv)< 0){
+                        printf("Error al ejecutar el comando %s\n", line->commands[cont]);
+                    }
+                    kill(SIGUSR2, hijos[cont+1]);
+                }else{
+                    close(pipe_des2[1]);
+                    close(STDIN_FILENO);
+                    dup(pipe_des2[0]);
+                    close(pipe_des1[1]);
+                    dup(STDOUT_FILENO);
+                    close(pipe_des1[0]);
+
+                    if(execvp(line->commands[0].argv[0], line->commands[0].argv)< 0){
+                        printf("Error al ejecutar el comando %s\n", line->commands[cont]);
+                    }
+                    kill(SIGUSR2, hijos[cont+1]);
+                    */
+                }
+        exit(0);
     }
-      exit(0);
-}
