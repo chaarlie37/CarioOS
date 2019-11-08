@@ -17,7 +17,7 @@ FILE *p_p;
 FILE *p_h;
 int cont;
 
-int hijos[3];
+int hijos[5];
 void manejador_hijo(int sig);
 
 int main(void) {
@@ -27,7 +27,7 @@ int main(void) {
 	printf("msh> ");
 	while (fgets(buf, 1024, stdin)) {
         line = tokenize(buf);
-
+        pid = fork();
         pipe(fd);
 
         if (line==NULL) {
@@ -75,12 +75,14 @@ int main(void) {
         if(pid == 0){
             while(1);
         }else{
-
+            pipe(pipe_des1);
+            pipe(pipe_des2);
             for (i=0; i<line->ncommands; i++) {
                 printf("orden %d (%s):\n", i, line->commands[i].filename);
                 for (j=0; j<line->commands[i].argc; j++) {
                   printf("  argumento %d: %s\n", j, line->commands[i].argv[j]);
                 }
+
                 int pid = fork();
                 if(pid == 0){
                     pause();
@@ -90,15 +92,17 @@ int main(void) {
                 }
                 //kill(hijos[i], SIGUSR2);
 
-                if(line->ncommands - 1 - i % 2 == 0){   //mandatos pares
+                if(i % 2 == 0){   //mandatos pares
                     printf("Pares %d\n", i);
-                    kill(hijos[line->ncommands - 1 - i], SIGUSR2);
+                    //kill(hijos[line->ncommands - 1 - i], SIGUSR2);
+                    kill(hijos[i], SIGUSR2);
                 }
                 else    // mandatos impares
                 {
                     printf("Impares %d\n", i);
                     sleep(0.5);
-                    kill(hijos[line->ncommands - 1 - i], SIGUSR1);
+                    //kill(hijos[line->ncommands - 1 - i], SIGUSR1);
+                    kill(hijos[i], SIGUSR1);
                 }
 
             }
@@ -146,13 +150,14 @@ int main(void) {
                         close(pipe_des1[0]);        // pipe solo de escritura
                         close(STDOUT_FILENO);
                         dup(pipe_des1[1]);
-                        //close(pipe_des1[1]);
+                        close(pipe_des2[1]);
+                        close(pipe_des2[0]);
 
                         execvp(line->commands[i].argv[0], line->commands[i].argv);
                     }
                     else if(i>0 && i<line->ncommands-1)
                     {
-
+                        
                         close(pipe_des2[1]);
                         close(STDIN_FILENO);
                         dup(pipe_des2[0]);
@@ -167,10 +172,11 @@ int main(void) {
                     }
                     else
                     {
+
                         close(pipe_des2[1]);
                         close(STDIN_FILENO);
                         dup(pipe_des2[0]);
-                        close(pipe_des2[0]);
+                        //close(pipe_des2[0]);
 
                         execvp(line->commands[i].argv[0], line->commands[i].argv);
                     }
