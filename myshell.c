@@ -15,35 +15,10 @@ int pipe_des2[2];
 int fd[2];
 FILE *p_p;
 FILE *p_h;
-int cont = 0;
-void manejador_hijo(int sig){//Aqui se ejecutan los comandos
-    if(sig == SIGUSR1){
-      if(execvp(line->commands[0].argv[0], line->commands[0].argv)< 0){
-          char buff[1024];
-          char *salida = "No se ha encontrado el mandato\n";
-          strcpy(buff, salida);
-          fputs(buff, stderr);
-        }
-    }else if(sig == SIGUSR2){
-        if(cont != line->ncommands-1){
-            close(pipe_des1[1]);
-            close(pipe_des2[0]);
-            close(STDIN_FILENO);
-            dup(pipe_des2[0]);
-            close(STDOUT_FILENO);
-            dup(pipe_des1[1]);
+int cont;
 
-            if(execvp(line->commands[0].argv[0], line->commands[0].argv)< 0){
-                printf("Error al ejecutar el comando %s\n", line->commands[cont]);
-            }
-
-            kill(SIGUSR2, hijos[cont+1]);
-        }
-
-
-    }
-      exit(0);
-}
+int hijos[3];
+void manejador_hijo(int sig);
 
 int main(void) {
 
@@ -52,6 +27,7 @@ int main(void) {
 	printf("msh> ");
 	while (fgets(buf, 1024, stdin)) {
         line = tokenize(buf);
+
         pipe(fd);
         pid = fork();
         if (line==NULL) {
@@ -99,7 +75,7 @@ int main(void) {
         if(pid == 0){
             while(1);
         }else{
-            int hijos[line->ncommands];
+
             for (i=0; i<line->ncommands; i++) {
                 printf("orden %d (%s):\n", i, line->commands[i].filename);
                 for (j=0; j<line->commands[i].argc; j++) {
@@ -119,6 +95,7 @@ int main(void) {
                 sleep(0.5);
                 kill(hijos[0], SIGUSR1);
             }else if(line->ncommands > 1){
+                cont = 0;
                 kill(hijos[0], SIGUSR2);
             }
             wait(pid);
@@ -129,4 +106,55 @@ int main(void) {
 	}
 
 	return 0;
+}
+
+void manejador_hijo(int sig){//Aqui se ejecutan los comandos
+    if(sig == SIGUSR1){
+      if(execvp(line->commands[0].argv[0], line->commands[0].argv)< 0){
+          char buff[1024];
+          char *salida = "No se ha encontrado el mandato\n";
+          strcpy(buff, salida);
+          fputs(buff, stderr);
+        }
+    }else if(sig == SIGUSR2){
+        if(cont != line->ncommands-1 && cont != 0){
+            close(pipe_des1[0]);
+            close(pipe_des2[1]);
+            close(STDIN_FILENO);
+            dup(pipe_des2[0]);
+            close(STDOUT_FILENO);
+            dup(pipe_des1[1]);
+
+            if(execvp(line->commands[0].argv[0], line->commands[0].argv)< 0){
+                printf("Error al ejecutar el comando %s\n", line->commands[cont]);
+            }
+
+            kill(SIGUSR2, hijos[cont+1]);
+        }else if(cont == 0){
+            close(pipe_des2[0]);
+            close(pipe_des2[1]);
+            close(pipe_des1[0]);
+            close(STDOUT_FILENO);
+            dup(pipe_des1[1]);
+            if(execvp(line->commands[0].argv[0], line->commands[0].argv)< 0){
+                printf("Error al ejecutar el comando %s\n", line->commands[cont]);
+            }
+            kill(SIGUSR2, hijos[cont+1]);
+        }else{
+            close(pipe_des2[1]);
+            close(STDIN_FILENO);
+            dup(pipe_des2[0]);
+            close(pipe_des1[1]);
+            dup(STDOUT_FILENO);
+            close(pipe_des1[0]);
+
+            if(execvp(line->commands[0].argv[0], line->commands[0].argv)< 0){
+                printf("Error al ejecutar el comando %s\n", line->commands[cont]);
+            }
+            kill(SIGUSR2, hijos[cont+1]);
+        }
+
+
+    }
+      exit(0);
 }
