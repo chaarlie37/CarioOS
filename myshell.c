@@ -10,7 +10,8 @@ char buf[1024];
 tline * line;
 int i,j;
 int pid;
-int pipe_des[2];
+int pipe_des1[2];
+int pipe_des2[2];
 int fd[2];
 FILE *p_p;
 FILE *p_h;
@@ -30,19 +31,19 @@ int main(void) {
   signal(SIGUSR1, manejador_hijo);
 	printf("msh> ");
 	while (fgets(buf, 1024, stdin)) {
+    line = tokenize(buf);
+    pipe(fd);
+    pid = fork();
 
-
-
-		line = tokenize(buf);
 		if (line==NULL) {
 			continue;
 		}
 		if (line->redirect_input != NULL) {
-      printf("redirección de entrada: %s\n", line->redirect_input);
-      pid = fork();
-      pipe(fd);
+
+
 
       if(pid == 0){
+        printf("redirección de entrada: %s\n", line->redirect_input);
         close(fd[1]);
         close(STDIN_FILENO);
         p_p = fopen(line->redirect_input, "r");
@@ -50,15 +51,21 @@ int main(void) {
 
         close(fd[0]);
 
-      }else{
-        sleep(3);
-        kill(pid, SIGUSR1);
-        wait(NULL);
       }
 
 		}
 		if (line->redirect_output != NULL) {
-			printf("redirección de salida: %s\n", line->redirect_output);
+
+      if(pid == 0){
+        printf("redireccion de entrada: %s\n", line->redirect_output);
+        close(fd[0]);
+        close(STDOUT_FILENO);
+        p_p = fopen(line->redirect_output, "w");
+        dup2(p_p, fd[1]);
+
+        close(fd[1]);
+
+      }
 
 		}
 		if (line->redirect_error != NULL) {
@@ -66,23 +73,23 @@ int main(void) {
 		}
 		if (line->background) {
 			printf("comando a ejecutarse en background\n");
-		}else{
-      pid = fork();
+		}
+
+    for(int j = 0; j< line->ncommands; j++){
       if(pid == 0){
         while(1);
       }else{
+        for (i=0; i<line->ncommands; i++) {
+          printf("orden %d (%s):\n", i, line->commands[i].filename);
+          for (j=0; j<line->commands[i].argc; j++) {
+            printf("  argumento %d: %s\n", j, line->commands[i].argv[j]);
+          }
+        }
+        sleep(0.5);
         kill(pid, SIGUSR1);
         wait(NULL);
       }
     }
-		for (i=0; i<line->ncommands; i++) {
-			printf("orden %d (%s):\n", i, line->commands[i].filename);
-			for (j=0; j<line->commands[i].argc; j++) {
-				printf("  argumento %d: %s\n", j, line->commands[i].argv[j]);
-			}
-		}
-
-
 
 
 		printf("msh> ");
