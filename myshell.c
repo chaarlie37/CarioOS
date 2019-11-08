@@ -80,21 +80,34 @@ int main(void) {
         if(pid == 0){
             while(1);
         }else{
+            int hijos[line->ncommands];
             for (i=0; i<line->ncommands; i++) {
                 printf("orden %d (%s):\n", i, line->commands[i].filename);
                 for (j=0; j<line->commands[i].argc; j++) {
                   printf("  argumento %d: %s\n", j, line->commands[i].argv[j]);
                 }
+                int pid = fork();
+                if(pid == 0){
+                    pause();
+                }
+                else{
+                    hijos[i] = pid;
+                }
             }
-            printf("%d\n", line->ncommands);
-            sleep(0.5);
-            kill(pid, SIGUSR1);
+
+            if(line->ncommands == 1){
+                printf("%d\n", line->ncommands);
+                sleep(0.5);
+                kill(hijos[0], SIGUSR1);
+            }else if(line->ncommands > 1){
+                kill(hijos[0], SIGUSR2);
+            }
             wait(pid);
         }
 
         printf("msh> ");
 
 	}
-    
+
 	return 0;
 }
