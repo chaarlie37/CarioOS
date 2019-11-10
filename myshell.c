@@ -82,12 +82,15 @@ int main(void) {
         }else{
             int pid2 = 0;
             int pid_hijo;
-            for (i=0; i<line->ncommands; i++) {
+            for (i=0; i<line->ncommands; i++)
                 pipe(pipes[i]);
+            for (i=0; i<line->ncommands; i++) {
                 pid2 = fork();
                 if(pid2 > 0){
                     hijos[i] = pid;
                     sleep(1);
+
+
                 }
                 else{
                     if(i == 0){
@@ -97,10 +100,12 @@ int main(void) {
                             close(STDOUT_FILENO);
                             dup(pipes[i][1]);
                             close(pipes[i][1]);
-                            for(int a = i+1; a<line->ncommands; a++){
+
+                            for(int a = 1; a<line->ncommands; a++){
                                 close(pipes[a][1]);
                                 close(pipes[a][0]);
                             }
+
                         }
                         if(execvp(line->commands[i].argv[0], line->commands[i].argv)<0){
                             printf("Error en execvp.\n");
@@ -110,25 +115,22 @@ int main(void) {
                     }
                     else if(i > 0  &&  i < line->ncommands - 1){
                         printf("Medio\n");
-                        close(pipes[i-1][1]);
-                        close(STDIN_FILENO);
-                        dup2(pipes[i-1][0], 0);
-                        close(pipes[i-1][0]);
 
-                        close(pipes[i][0]);
-                        close(STDOUT_FILENO);
-                        dup2(pipes[i][1], 1);
-                        close(pipes[i][1]);
+                                close(pipes[i-1][1]);
+                                close(STDIN_FILENO);
+                                dup2(pipes[i-1][0], 0);
+                                close(pipes[i-1][0]);
 
+                                close(pipes[i][0]);
+                                close(STDOUT_FILENO);
+                                dup2(pipes[i][1], 1);
+                                close(pipes[i][1]);
 
-                        for(int a = 0; a<i-1; a++){
-                            close(pipes[a][1]);
-                            close(pipes[a][0]);
-                        }
-                        for(int a = i+1; a<line->ncommands; a++){
-                            close(pipes[a][1]);
-                            close(pipes[a][0]);
-                        }
+                                for(int a = 0; a<line->ncommands; a++){
+                                    close(pipes[a][1]);
+                                    close(pipes[a][0]);
+                                }
+
 
                         if(execvp(line->commands[i].argv[0], line->commands[i].argv)<0){
                             printf("Error en execvp.\n");
@@ -143,7 +145,7 @@ int main(void) {
                         dup(pipes[i-1][0]);
                         close(pipes[i-1][0]);
 
-                        for(int a = i; a>0; a--){
+                        for(int a = 1; a<line->ncommands; a++){
                             close(pipes[a][1]);
                             close(pipes[a][0]);
                         }
@@ -181,6 +183,10 @@ int main(void) {
             }
             */
 
+        }
+        for(int a = 1; a<line->ncommands; a++){
+            close(pipes[a][1]);
+            close(pipes[a][0]);
         }
         wait(NULL);
         printf("2msh> ");
