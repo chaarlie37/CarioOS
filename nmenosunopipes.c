@@ -21,6 +21,8 @@ FILE *p_p;
 FILE *p_h;
 int cont;
 
+int pipe_h2_h3[2], pipe_h1_h2[2];
+
 int status;
 int hijo_terminado;
 
@@ -30,61 +32,100 @@ int pipes[10][2];
 
 int fd1[2], fd2[2];
 
+int pid_shell;
+
 void manejador_hijo(int sig);
+
+char *cmd1[] = {"ls", "-la", 0};
+char *cmd2[] = {"tr", "d", "D", 0};
+char *cmd3[] = {"tr", "c", "C", 0};
 
 int main(void) {
 
+    pid_shell = getpid();
 
-    signal(SIGUSR1, manejador_hijo);
-    signal(SIGUSR2, manejador_hijo);
+    //signal(SIGUSR1, manejador_hijo);
+    //signal(SIGUSR2, manejador_hijo);
 	printf("msh> ");
-	while (fgets(buf, 1024, stdin)) {
+	while (getpid() == pid_shell && fgets(buf, 1024, stdin)) {
         line = tokenize(buf);
-        pipe(fd1);
-        pipe(fd2);
+        pipe(pipe_h2_h3);
+        pipe(pipe_h1_h2);
         pid1 = fork();
         if(pid1 == 0){
+            /*
+            close(fd2[1]);
+            close(fd2[0]);
             close(fd1[0]);
             close(STDOUT_FILENO);
-            dup2(fd1[1], 1);
-            close(fd1[1]);
-            dup2(STDIN_FILENO, 0);
+            dup(fd1[1]);
+
             execvp(line->commands[0].argv[0], line->commands[0].argv);
+            close(fd1[1]);
+            */
+            close(pipe_h2_h3[0]);
+            close(pipe_h2_h3[1]);
+            close(pipe_h1_h2[0]);
+            close(STDOUT_FILENO);
+            dup(pipe_h1_h2[1]);
+            execvp(cmd1[0], cmd1);
+
+            printf("Cosas\n");
+            close(pipe_h1_h2[1]);
+            exit(0);
         }else{
-
-
             pid2 = fork();
             if(pid2 == 0){
+                /*
                 close(fd1[1]);
                 close(STDIN_FILENO);
-                dup2(fd1[0], 0);
+                dup(fd1[0]);
                 close(fd1[0]);
 
 
                 close(fd2[0]);
                 close(STDOUT_FILENO);
-                dup2(fd2[1], 1);
-                close(fd2[1]);
+                dup(fd2[1]);
+
 
                 execvp(line->commands[1].argv[0], line->commands[1].argv);
+                close(fd2[1]);
+                */
+                close(pipe_h1_h2[1]);
+                close(STDIN_FILENO);
+                dup(pipe_h1_h2[0]);
+                close(pipe_h2_h3[0]);
+                close(STDOUT_FILENO);
+                dup(pipe_h2_h3[1]);
+                printf("Buenas, aqui el hijo 2.\n");
+                execvp(cmd2[0], cmd2);
+                exit(0);
 
             }else{
 
                 pid3 = fork();
                 if(pid3 == 0){
+                    /*
+                    close(fd1[1]);
+                    close(fd1[0]);
                     close(fd2[1]);
                     close(STDIN_FILENO);
                     dup2(fd2[0], 0);
-                    close(fd2[0]);
+
                     execvp(line->commands[2].argv[0], line->commands[2].argv);
+                    close(fd2[0]);
+                    */
+                    close(pipe_h1_h2[0]);
+                    close(pipe_h1_h2[1]);
+                    close(pipe_h2_h3[1]);
+                    close(STDIN_FILENO);
+                    dup(pipe_h2_h3[0]);
+                    execvp(cmd3[0], cmd3);
+                    close(pipe_h2_h3[0]);
                 }
                 else{
-                    wait(NULL);
-                    printf("msh> ");
                 }
             }
-
-
         }
 
 
@@ -183,9 +224,10 @@ int main(void) {
             }
 
         }
-        */
 
-
+*/
+    wait(NULL);
+    printf("msh> ");
 
 	}
 

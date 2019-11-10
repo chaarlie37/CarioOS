@@ -6,6 +6,8 @@
 #include <ctype.h>
 #include <signal.h>
 #include "parser.h"
+#include <sys/types.h>
+#include <sys/wait.h>
 char buf[1024];
 tline * line;
 int i,j;
@@ -18,20 +20,23 @@ FILE *p_h;
 int cont;
 
 int hijos[5];
+int pipes[10][2];
+
 void manejador_hijo(int sig);
 
 int main(void) {
 
     signal(SIGUSR1, manejador_hijo);
     signal(SIGUSR2, manejador_hijo);
-	printf("msh> ");
-	while (fgets(buf, 1024, stdin)) {
+	printf("1msh> ");
+	//while (fgets(buf, 1024, stdin)) {
+    if(fgets(buf, 1024, stdin)){
         line = tokenize(buf);
         pid = fork();
         pipe(fd);
 
         if (line==NULL) {
-    		continue;
+    		//continue;
     	}
 
     	if (line->redirect_input != NULL) {
@@ -75,38 +80,90 @@ int main(void) {
         if(pid == 0){
             while(1);
         }else{
-            pipe(pipe_des1);
-            pipe(pipe_des2);
+            int pid2 = 0;
+            int pid_hijo;
             for (i=0; i<line->ncommands; i++) {
-                printf("orden %d (%s):\n", i, line->commands[i].filename);
-                for (j=0; j<line->commands[i].argc; j++) {
-                  printf("  argumento %d: %s\n", j, line->commands[i].argv[j]);
-                }
-
-                int pid = fork();
-                if(pid == 0){
-                    pause();
+                pipe(pipes[i]);
+                pid2 = fork();
+                if(pid2 > 0){
+                    hijos[i] = pid;
+                    sleep(1);
                 }
                 else{
-                    hijos[i] = pid;
-                }
-                //kill(hijos[i], SIGUSR2);
+                    if(i == 0){
+                        if(line->ncommands > 1){
+                            printf("Primero\n");
+                            close(pipes[i][0]);
+                            close(STDOUT_FILENO);
+                            dup(pipes[i][1]);
+                            close(pipes[i][1]);
+                            for(int a = i+1; a<line->ncommands; a++){
+                                close(pipes[a][1]);
+                                close(pipes[a][0]);
+                            }
+                        }
+                        if(execvp(line->commands[i].argv[0], line->commands[i].argv)<0){
+                            printf("Error en execvp.\n");
+                            exit(1);
+                        }
 
-                if(i % 2 == 0){   //mandatos pares
-                    printf("Pares %d\n", i);
-                    //kill(hijos[line->ncommands - 1 - i], SIGUSR2);
-                    kill(hijos[i], SIGUSR2);
-                }
-                else    // mandatos impares
-                {
-                    printf("Impares %d\n", i);
-                    sleep(0.5);
-                    //kill(hijos[line->ncommands - 1 - i], SIGUSR1);
-                    kill(hijos[i], SIGUSR1);
-                }
+                    }
+                    else if(i > 0  &&  i < line->ncommands - 1){
+                        printf("Medio\n");
+                        close(pipes[i-1][1]);
+                        close(STDIN_FILENO);
+                        dup2(pipes[i-1][0], 0);
+                        close(pipes[i-1][0]);
 
+                        close(pipes[i][0]);
+                        close(STDOUT_FILENO);
+                        dup2(pipes[i][1], 1);
+                        close(pipes[i][1]);
+
+
+                        for(int a = 0; a<i-1; a++){
+                            close(pipes[a][1]);
+                            close(pipes[a][0]);
+                        }
+                        for(int a = i+1; a<line->ncommands; a++){
+                            close(pipes[a][1]);
+                            close(pipes[a][0]);
+                        }
+
+                        if(execvp(line->commands[i].argv[0], line->commands[i].argv)<0){
+                            printf("Error en execvp.\n");
+                            exit(1);
+                        }
+
+                    }
+                    else{
+                        printf("Ultimo\n");
+                        close(pipes[i-1][1]);
+                        close(STDIN_FILENO);
+                        dup(pipes[i-1][0]);
+                        close(pipes[i-1][0]);
+
+                        for(int a = i; a>0; a--){
+                            close(pipes[a][1]);
+                            close(pipes[a][0]);
+                        }
+
+
+                        if(execvp(line->commands[i].argv[0], line->commands[i].argv)<0){
+                            printf("Error en execvp.\n");
+                            exit(1);
+                        }
+
+                    }
+                }
             }
-            for (i=line->ncommands-1; i>=0; i--) {
+
+            for (i=0; i<line->ncommands; i++) {
+                if(pid2>0){
+                    //kill(hijos[i], SIGUSR2);
+                    //sleep(0.5);
+                    //kill(hijos[i+1], SIGUSR2);
+                }
 
             }
 
@@ -123,10 +180,10 @@ int main(void) {
                 kill(hijos[0], SIGUSR2);
             }
             */
-            wait(pid);
-        }
 
-        printf("msh> ");
+        }
+        wait(NULL);
+        printf("2msh> ");
 
 	}
 
@@ -135,120 +192,67 @@ int main(void) {
 
 
         void manejador_hijo(int sig){//Aqui se ejecutan los comandos
-            if(sig == SIGUSR2){     // si el mandato i es impar
-                if(line->ncommands == 1){ // si hay solo un mandato (no hay pipes)
-                  if(execvp(line->commands[0].argv[0], line->commands[0].argv)< 0){
-                      char buff[1024];
-                      char *salida = "No se ha encontrado el mandato\n";
-                      strcpy(buff, salida);
-                      fputs(buff, stderr);
-                    }
-                }
-                else
-                {
-                    if(i == 0){
-                        close(pipe_des1[0]);        // pipe solo de escritura
+            if(sig == SIGUSR2){
+                if(i == 0){
+                    if(line->ncommands > 1){
+                        close(pipes[i][0]);
                         close(STDOUT_FILENO);
-                        dup(pipe_des1[1]);
-                        close(pipe_des2[1]);
-                        close(pipe_des2[0]);
-
-                        execvp(line->commands[i].argv[0], line->commands[i].argv);
+                        dup(pipes[i][1]);
+                        close(pipes[i][1]);
+                        for(int a = i+1; a<line->ncommands; a++){
+                            close(pipes[a][1]);
+                            close(pipes[a][0]);
+                        }
                     }
-                    else if(i>0 && i<line->ncommands-1)
-                    {
-                        
-                        close(pipe_des2[1]);
-                        close(STDIN_FILENO);
-                        dup(pipe_des2[0]);
-                        //close(pipe_des2[0]);
-
-                        close(pipe_des1[0]);        // pipe solo de escritura
-                        close(STDOUT_FILENO);
-                        dup(pipe_des1[1]);
-                        //close(pipe_des1[1]);
-
-                        execvp(line->commands[i].argv[0], line->commands[i].argv);
-                    }
-                    else
-                    {
-
-                        close(pipe_des2[1]);
-                        close(STDIN_FILENO);
-                        dup(pipe_des2[0]);
-                        //close(pipe_des2[0]);
-
-                        execvp(line->commands[i].argv[0], line->commands[i].argv);
+                    if(execvp(line->commands[i].argv[0], line->commands[i].argv)<0){
+                        printf("Error en execvp.\n");
+                        exit(1);
                     }
 
                 }
+                else if(i > 0  &&  i < line->ncommands - 1){
 
-
-            }else if(sig == SIGUSR1){
-
-
-                if(i>0 && i<line->ncommands-1)
-                {
-                    close(pipe_des1[1]);
+                    close(pipes[i-1][1]);
                     close(STDIN_FILENO);
-                    dup(pipe_des1[0]);
-                    //close(pipe_des1[0]);
+                    dup(pipes[i-1][0]);
+                    close(pipes[i-1][0]);
 
-                    close(pipe_des2[0]);        // pipe solo de escritura
+                    close(pipes[i][0]);
                     close(STDOUT_FILENO);
-                    dup(pipe_des2[1]);
-                    //close(pipe_des2[1]);
+                    dup(pipes[i][1]);
+                    close(pipes[i][1]);
 
-                    execvp(line->commands[i].argv[0], line->commands[i].argv);
-                }
-                else
-                {
-                    close(pipe_des1[1]);
-                    close(STDIN_FILENO);
-                    dup(pipe_des1[0]);
-                    //close(pipe_des1[0]);
-
-                    execvp(line->commands[i].argv[0], line->commands[i].argv);
-                }
-
-
-        /*
-
-                if(cont != line->ncommands-1 && cont != 0){
-                    close(pipe_des1[0]);
-                    close(pipe_des2[1]);
-                    close(STDIN_FILENO);
-                    dup(pipe_des2[0]);
-                    close(STDOUT_FILENO);
-                    dup(pipe_des1[1]);
-
-                    if(execvp(line->commands[0].argv[0], line->commands[0].argv)< 0){
-                        printf("Error al ejecutar el comando %s\n", line->commands[cont]);
+                    for(int a = i+1; a<line->ncommands; a++){
+                        close(pipes[a][1]);
+                        close(pipes[a][0]);
                     }
-                    kill(SIGUSR2, hijos[cont+1]);
-                }else if(cont == 0){
-                    close(pipe_des2[0]);
-                    close(pipe_des2[1]);
-                    close(pipe_des1[0]);
-                    close(STDOUT_FILENO);
-                    dup(pipe_des1[1]);
-                    if(execvp(line->commands[0].argv[0], line->commands[0].argv)< 0){
-                        printf("Error al ejecutar el comando %s\n", line->commands[cont]);
-                    }
-                    kill(SIGUSR2, hijos[cont+1]);
-                }else{
-                    close(pipe_des2[1]);
-                    close(STDIN_FILENO);
-                    dup(pipe_des2[0]);
-                    close(pipe_des1[1]);
-                    dup(STDOUT_FILENO);
-                    close(pipe_des1[0]);
 
-                    if(execvp(line->commands[0].argv[0], line->commands[0].argv)< 0){
-                        printf("Error al ejecutar el comando %s\n", line->commands[cont]);
+                    if(execvp(line->commands[i].argv[0], line->commands[i].argv)<0){
+                        printf("Error en execvp.\n");
+                        exit(1);
                     }
-                    kill(SIGUSR2, hijos[cont+1]);
-                    */
+
                 }
+                else{
+
+                    close(pipes[i-1][1]);
+                    close(STDIN_FILENO);
+                    dup(pipes[i-1][0]);
+                    close(pipes[i-1][0]);
+                    close(pipes[i][1]);
+                    close(pipes[i][0]);
+
+                    for(int a = i+1; a<line->ncommands; a++){
+                        close(pipes[a][1]);
+                        close(pipes[a][0]);
+                    }
+
+                    if(execvp(line->commands[i].argv[0], line->commands[i].argv)<0){
+                        printf("Error en execvp.\n");
+                        exit(1);
+                    }
+
+                }
+            }
         exit(0);
     }
