@@ -65,7 +65,6 @@ int main(void) {
 
 		for(int a = 0; a<contadorProcesosBackground; a++){
 			if(procesosBackground[a].status == 0){
-				printf("Esperando a pid %d\n", procesosBackground[a].pid);
 				if(waitpid(procesosBackground[a].pid, &status, WNOHANG) < 0){
 					procesosBackground[a].status = 1;
 				}
@@ -146,7 +145,13 @@ int main(void) {
             }
 
       		if (line->background) {
-
+				char buff[1024];
+				strcpy(buff, "");
+				for(int a = 0; a < line->commands[0].argc; a++){
+					strcat(buff, line->commands[0].argv[a]);
+					strcat(buff, " ");
+				}
+				strcat(buff, " &");
                 if(pid < 0){
                     fprintf(stderr, "Error en la creacion del proceso hijo.\n");
                 }else if(pid == 0){
@@ -156,24 +161,16 @@ int main(void) {
                             char *salida = "No se ha encontrado el mandato.\n";
                             strcpy(buff, salida);
                             fputs(buff, stderr);
+							continue;
                         }
                 }else{
-
-
-
 					contadorProcesosBackground++;
 					procesosBackground[contadorProcesosBackground-1].pid = pid;
-					char buff[1024];
-					strcpy(buff, "");
-					for(int a = 0; a < line->commands[0].argc; a++){
-						strcat(buff, line->commands[0].argv[0]);
-					}
+
 					procesosBackground[contadorProcesosBackground-1].nombre = buff;
 					procesosBackground[contadorProcesosBackground-1].n = contadorProcesosBackground;
 					procesosBackground[contadorProcesosBackground-1].status = 0;
                     printf("[%d] %d\n", contadorProcesosBackground , procesosBackground[contadorProcesosBackground-1].pid);
-
-
 					sleep(1);
                 }
             }else{
