@@ -25,6 +25,15 @@ int main(void) {
 	int *hijos;
 	int **pipes;
 
+    typedef struct{
+        char * nombre;
+        int n;
+        int pid;
+    } tProcesoBackground;
+
+    tProcesoBackground procesosBackground[10]; // hay que hacerlo dinamico tb
+    int contadorProcesosBackground = 0;
+
 
 	printf("msh> ");
 	while (fgets(buf, 1024, stdin)) {
@@ -41,8 +50,6 @@ int main(void) {
     	}else if(line->ncommands == 1){//Caso de que solo haya un mandato
             pipe(fd);
             pid = fork();
-
-            // REVISAR: ¿Después de este fork no iria el if pid == 0 antes para cambiar la redireccion del hijo y no del padre?
 
             if (line->redirect_input != NULL) {
                 if(pid == 0){
@@ -78,21 +85,48 @@ int main(void) {
             }
 
       		if (line->background) {
-                printf("comando a ejecutarse en background\n");
-            }
-
-            if(pid < 0){
-                fprintf(stderr, "Error en la creacion del proceso hijo.\n");
-            }else if(pid == 0){
-                if(execvp(line->commands[0].argv[0], line->commands[0].argv)< 0){
-                    char buff[1024];
-                    char *salida = "No se ha encontrado el mandato.\n";
-                    strcpy(buff, salida);
-                    fputs(buff, stderr);
+                if(pid < 0){
+                    fprintf(stderr, "Error en la creacion del proceso hijo.\n");
+                }else if(pid == 0){
+                    int pid2 = fork();
+                    if(pid2 == 0){
+                        procesosBackground[contadorProcesosBackground-1].pid = getpid();
+                        if(execvp(line->commands[0].argv[0], line->commands[0].argv)< 0){
+                            char buff[1024];
+                            char *salida = "No se ha encontrado el mandato.\n";
+                            strcpy(buff, salida);
+                            fputs(buff, stderr);
+                        }
+                    }
+                    else{
+                        wait(NULL);
+                    }
+                }else{
+                    contadorProcesosBackground++;
+                    procesosBackground[contadorProcesosBackground-1].nombre = line->commands[0].argv[0];
+                    procesosBackground[contadorProcesosBackground-1].n = contadorProcesosBackground;
+                    printf("Ejecutando en segundo plano el mandato %s\n", line->commands[0].argv[0]);
+                    printf("El jobs mostraria esto:\n");
+                    printf("[%d]+   Running    %s\n", procesosBackground[contadorProcesosBackground-1].n, procesosBackground[contadorProcesosBackground-1].nombre);
+                    sleep(1);
                 }
             }else{
-                waitpid(pid, NULL, 0);
+                if(pid < 0){
+                    fprintf(stderr, "Error en la creacion del proceso hijo.\n");
+                }else if(pid == 0){
+
+                    if(execvp(line->commands[0].argv[0], line->commands[0].argv)< 0){
+                        char buff[1024];
+                        char *salida = "No se ha encontrado el mandato.\n";
+                        strcpy(buff, salida);
+                        fputs(buff, stderr);
+                    }
+                }else{
+                    waitpid(pid, NULL, 0);
+                }
             }
+
+
 
         }else if(line->ncommands >= 2){//Caso de que haya mas de un mandato
             hijos = malloc(line->ncommands * sizeof(int));
