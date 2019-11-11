@@ -1,5 +1,0 @@
-orden 0 (/bin/cat):
-  argumento 0: cat
-sakjf
-kajsf
-fjd

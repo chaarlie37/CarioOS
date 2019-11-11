@@ -1,177 +1,297 @@
 #include <stdio.h>
 #include <string.h>
+#include <fcntl.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <ctype.h>
 #include <signal.h>
 #include "parser.h"
-char buf[1024];
-char buf2[1024];
-tline * line;
-int i,j;
-int pid1;
-int pid2;
-int pipe_des1[2];
-int pipe_des2[2];
-int fd[2];
-FILE *p_p;
-FILE *p_h;
-FILE *lectura;
-FILE *lectura2;
-int cont;
+#include <sys/types.h>
+#include <sys/wait.h>
 
-int hijos[5];
-void manejador_hijo(int sig);
+
+//TODO:
+// -estructura de procesos para el jobs
+// -Revisar mensajes y casos de error
 
 int main(void) {
+	char buf[1024];
+    char buf2[1024];
+	tline * line;
+	int i;
+	int pid;
+	int fd[2];
+	FILE *p_p;
+	int *hijos;
+	int **pipes;
+    char *dir;
+    int fichero;
 
-    signal(SIGUSR1, manejador_hijo);
-    signal(SIGUSR2, manejador_hijo);
+    typedef struct{
+        char * nombre;
+        int n;
+        int pid;
+    } tProcesoBackground;
+
+    tProcesoBackground procesosBackground[10]; // hay que hacerlo dinamico tb
+    int contadorProcesosBackground = 0;
+
+
 	printf("msh> ");
 	while (fgets(buf, 1024, stdin)) {
         line = tokenize(buf);
 
         if (line==NULL) {
-    		continue;
-    	}
-        pid2 = fork();
-
-
-
-
-    	if (line->redirect_output != NULL) {
-
-            printf("redireccion de salida: %s\n", line->redirect_output);
-            close(fd[0]);
-            close(STDOUT_FILENO);
-            p_p = fopen(line->redirect_output, "w");
-            dup2(p_p, fd[1]);
-            kill(pid1 , SIGUSR2);
-            close(fd[1]);
-
+          continue;
         }
 
-        if (line->redirect_error != NULL) {
-            //if(pid == 0){
-                printf("redireccion de error: %s\n", line->redirect_error);
-                close(fd[0]);
-                close(STDERR_FILENO);
-                p_p = fopen(line->redirect_error, "w");
-                dup2(p_p, fd[1]);
-                kill(pid1, SIGUSR2);
-                close(fd[1]);
-            //}
-        }
+    	if(strcmp(line->commands[0].argv[0],"cd")==0){
+             if (line->redirect_input != NULL) {
+                printf("redirección de entrada: %s\n", line->redirect_input);
+                fichero = open(line->redirect_input, O_RDONLY);
 
-		if (line->background) {
-			printf("comando a ejecutarse en background\n");
-		}
+                if(fchdir(fichero) != 0){
+                    fprintf(stderr, "Error: %s\n", strerror(errno));
+        	    }
 
-        if(pid2 == 0){
-            while(1);
-        }else{
+
+            } else{
+                if(line->commands[0].argc == 2){
+                    dir = line->commands[0].argv[1];
+                }else{
+                    dir = getenv("HOME");
+                }
+
+        		if(chdir(dir) != 0){
+                    if (line->redirect_error != NULL) {
+                        printf("redireccion de error: %s\n", line->redirect_error);
+                        p_p = fopen(line->redirect_error, "w");
+                        dup2(p_p, 2);
+                        fprintf(p_p, "Error: %s\n", strerror(errno));
+
+                    }else{
+                        fprintf(stderr, "Error: %s\n", strerror(errno));
+                    }
+
+        	    }
+            }
+
+    	}else if(line->ncommands == 1 && strcmp(line->commands[0].argv[0],"cd")!=0){//Caso de que solo haya un mandato
             pipe(fd);
-            pipe(pipe_des1);
-            pipe(pipe_des2);
-            for (i=0; i<line->ncommands; i++) {
-                printf("orden %d (%s):\n", i, line->commands[i].filename);
-                for (j=0; j<line->commands[i].argc; j++) {
-                  printf("  argumento %d: %s\n", j, line->commands[i].argv[j]);
+            pid = fork();
+
+            if (line->redirect_input != NULL) {
+                if(pid == 0){
+                    printf("redirección de entrada: %s\n", line->redirect_input);
+                    close(fd[1]);
+                    close(STDIN_FILENO);
+                    p_p = fopen(line->redirect_input, "r");
+                    dup2(p_p, fd[0]);
+                    close(fd[0]);
                 }
+            }
 
-                int pid2 = fork();
-                if(pid2 == 0){
-                    if(i % 2 == 0){   //mandatos pares
-                        if(i == 0){
-                            if (line->redirect_input != NULL) {
-                                    printf("redirección de entrada: %s\n", line->redirect_input);
-                                    close(fd[1]);
-                                    close(STDIN_FILENO);
-                                    p_p = fopen(line->redirect_input, "r");
-                                    dup2(p_p, fd[0]);
-                            }
-                            close(pipe_des2[0]);
-                            close(pipe_des2[1]);
-                            close(pipe_des1[0]);
-                            close(STDOUT_FILENO);
-                            dup(pipe_des1[1]);
-                            kill(hijos[i], SIGUSR2);
+          	if (line->redirect_output != NULL) {
+                if(pid == 0){
+                    printf("redireccion de salida: %s\n", line->redirect_output);
+                    close(fd[0]);
+                    close(STDOUT_FILENO);
+                    p_p = fopen(line->redirect_output, "w");
+                    dup2(p_p, fd[1]);
+                    close(fd[1]);
+                }
+            }
 
-                            exit(0);
-                        }else if (i > 0 && i < line->ncommands-1){
-                            close(pipe_des2[1]);
-                            close(pipe_des1[0]);
-                            close(STDIN_FILENO);
-                            dup(pipe_des2[0]);
-                            close(STDOUT_FILENO);
-                            dup(pipe_des1[1]);
-                            kill(hijos[i], SIGUSR2);
-                            exit(0);
-                        }else{
-                            close(pipe_des2[1]);
-                            close(STDIN_FILENO);
-                            dup(pipe_des2[0]);
-                            kill(hijos[i], SIGUSR2);
-                            exit(0);
+            if (line->redirect_error != NULL) {
+                if(pid == 0){
+                    printf("redireccion de error: %s\n", line->redirect_error);
+                    close(fd[0]);
+                    close(STDERR_FILENO);
+                    p_p = fopen(line->redirect_error, "w");
+                    dup2(p_p, fd[1]);
+                    close(fd[1]);
+                }
+            }
 
+      		if (line->background) {
+
+                if(pid < 0){
+                    fprintf(stderr, "Error en la creacion del proceso hijo.\n");
+                }else if(pid == 0){
+                    int pid2 = fork();
+                    if(pid2 == 0){
+                        procesosBackground[contadorProcesosBackground-1].pid = getpid();
+                        if(execvp(line->commands[0].argv[0], line->commands[0].argv)< 0){
+                            char buff[1024];
+                            char *salida = "No se ha encontrado el mandato.\n";
+                            strcpy(buff, salida);
+                            fputs(buff, stderr);
                         }
                     }
-                    else    // mandatos impares
-                    {
-                        if(i> 0 && i < line->ncommands-1){
-                            close(pipe_des1[1]);
-                            close(pipe_des2[0]);
-                            close(STDIN_FILENO);
-                            dup(pipe_des1[0]);
-                            close(STDOUT_FILENO);
-                            dup(pipe_des2[1]);
-                            kill(hijos[i], SIGUSR2);
-                            exit(0);
-                        }else if (i == line->ncommands-1){
-                            close(pipe_des1[1]);
-                            close(STDIN_FILENO);
-                            dup(pipe_des1[0]);
-                            kill(hijos[i], SIGUSR2);
-                            exit(0);
-
-                        }
-
+                    else{
+                        wait(NULL);
                     }
+                }else{
+                    contadorProcesosBackground++;
+                    procesosBackground[contadorProcesosBackground-1].nombre = line->commands[0].argv[0];
+                    procesosBackground[contadorProcesosBackground-1].n = contadorProcesosBackground;
+                    printf("Ejecutando en segundo plano el mandato %s\n", line->commands[0].argv[0]);
+                    printf("El jobs mostraria esto:\n");
+                    printf("[%d]+   Running    %s\n", procesosBackground[contadorProcesosBackground-1].n, procesosBackground[contadorProcesosBackground-1].nombre);
+                    sleep(1);
                 }
-                else{
-                    hijos[i] = pid2;
+            }else{
+                if(pid < 0){
+                    fprintf(stderr, "Error en la creacion del proceso hijo.\n");
+                }else if(pid == 0){
 
+                    if(execvp(line->commands[0].argv[0], line->commands[0].argv)< 0){
+                        char buff[1024];
+                        char *salida = "No se ha encontrado el mandato.\n";
+                        strcpy(buff, salida);
+                        fputs(buff, stderr);
+                    }
+                }else{
+                    waitpid(pid, NULL, 0);
                 }
-                if(i % 2 == 0){   //mandatos pares
-                    printf("Pares %d\n", i);
-
-
-                }
-                else    // mandatos impares
-                {
-                    printf("Impares %d\n", i);
-
-
-                }
-                wait(hijos[i]);
-
             }
 
 
 
+        }else if(line->ncommands >= 2){//Caso de que haya mas de un mandato
+            hijos = malloc(line->ncommands * sizeof(int));
+            pipes = (int **) malloc((line->ncommands-1) * sizeof(int *));
+            for (i=0; i<line->ncommands-1; i++){
+                pipes[i] = (int *) malloc (2*sizeof(int));
+                if(pipe(pipes[i]) < 0){
+    				fprintf(stderr, "Error al crear el pipe %d.\n", i);
+    			}
+            }
+            pipe(fd);
+            for (i=0; i<line->ncommands; i++) {
+                pid = fork();
+                if(pid < 0){
+                    fprintf(stderr, "Error al crear el hijo\n");
+                }else if (pid == 0){
+                    if(i == 0){
+                        if (line->redirect_input != NULL) {
+                            printf("redirección de entrada: %s\n", line->redirect_input);
+                            close(fd[1]);
+                            close(STDIN_FILENO);
+                            p_p = fopen(line->redirect_input, "r");
+                            dup2(p_p, fd[0]);
+                            close(fd[0]);
+                        }
+                        if (line->redirect_output != NULL) {
+                            char buff[1024];
+                            char *salida = "No se puede hacer redireccion de salida en un comando que no sea el ultimo\n";
+                            strcpy(buff, salida);
+                            fputs(buff, stderr);
+                            exit(1);
+                        }
+
+                        for(int c = 1; c < line->ncommands-1; c++){
+                            close(pipes[c][0]);
+                            close(pipes[c][1]);
+                        }
+
+                        close(pipes[0][0]);
+                        close(STDOUT_FILENO);
+                        dup(pipes[0][1]);
+                    }
+
+                    if (i > 0 && i < line->ncommands-1){
+                        if (line->redirect_output != NULL) {
+                            char buff[1024];
+                            char *salida = "No se puede hacer redireccion de salida en un mandato que no sea el ultimo\n";
+                            strcpy(buff, salida);
+                            fputs(buff, stderr);
+                            exit(1);
+                        }
+                        if (line->redirect_input != NULL) {
+                            char buff[1024];
+                            char *salida = "No se puede hacer redireccion de entrada en un mandato que no sea el primero\n";
+                            strcpy(buff, salida);
+                            fputs(buff, stderr);
+                            exit(1);
+                        }
+
+                        for(int c = 0; c < line->ncommands-1; c++){
+                            if(c != i && c != i-1){
+                                close(pipes[c][0]);
+                                close(pipes[c][1]);
+                            }
+                        }
+                            close(pipes[i-1][1]);
+                            close(STDIN_FILENO);
+                            dup(pipes[i-1][0]);
+
+                            close(pipes[i][0]);
+                            close(STDOUT_FILENO);
+                            dup(pipes[i][1]);
+                    }
+
+                    if(i == line->ncommands-1){
+                        if (line->redirect_input != NULL) {
+                            char buff[1024];
+                            char *salida = "No se puede hacer redireccion de entrada en un mandato que no sea el primero\n";
+                            strcpy(buff, salida);
+                            fputs(buff, stderr);
+                            exit(1);
+                        }
+                        if (line->redirect_output != NULL) {
+                            printf("redireccion de salida: %s\n", line->redirect_output);
+                            close(fd[0]);
+                            close(STDOUT_FILENO);
+                            p_p = fopen(line->redirect_output, "w");
+                            dup2(p_p, fd[1]);
+                            close(fd[1]);
+                        }
+                        if (line->redirect_error != NULL) {
+                            printf("redireccion de error: %s\n", line->redirect_error);
+                            close(fd[0]);
+                            close(STDERR_FILENO);
+                            p_p = fopen(line->redirect_error, "w");
+                            dup2(p_p, fd[1]);
+                            close(fd[1]);
+                        }
+
+                        for(int c = 0; c<line->ncommands-2; c++){
+                            close(pipes[c][0]);
+                            close(pipes[c][1]);
+                        }
+
+                        close(pipes[i-1][1]);
+                        close(STDIN_FILENO);
+                        dup(pipes[i-1][0]);
+                    }
+
+                    if (execv(line->commands[i].filename, line->commands[i].argv) < 0){
+        				char buff[1024];
+        				char *salida = "No se ha encontrado el mandato\n";
+        				strcpy(buff, salida);
+        				fputs(buff, stderr);
+        				exit(1);
+        			}
+                }else{
+                    hijos[i] = pid;
+                }
+            }
+
+            for(int a = 0; a<line->ncommands-1; a++){
+                close(pipes[a][1]);
+                close(pipes[a][0]);
+            }
+
+            for(int k = 0; k<line->ncommands; k++){
+                waitpid(hijos[k], NULL, 0);
+            }
+
+            free(pipes);
+            free(hijos);
         }
-
         printf("msh> ");
-
-	}
-
-	return 0;
-}
-
-void manejador_hijo(int sig){
-    if(execvp(line->commands[i].argv[0], line->commands[i].argv)<0){
-        printf("No se encuentra el comando\n");
     }
-    exit(0);
+	return 0;
 }

@@ -85,6 +85,7 @@ int main(void) {
             }
 
       		if (line->background) {
+
                 if(pid < 0){
                     fprintf(stderr, "Error en la creacion del proceso hijo.\n");
                 }else if(pid == 0){
