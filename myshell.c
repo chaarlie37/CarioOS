@@ -15,14 +15,33 @@ int pipe_des2[2];
 int fd[2];
 FILE *p_p;
 FILE *p_h;
-
+int cont = 0;
 void manejador_hijo(int sig){//Aqui se ejecutan los comandos
-    if(execvp(line->commands[0].argv[0], line->commands[0].argv)< 0){
-        char buff[1024];
-        char *salida = "No se ha encontrado el mandato\n";
-        strcpy(buff, salida);
-        fputs(buff, stderr);
-      }
+    if(sig == SIGUSR1){
+      if(execvp(line->commands[0].argv[0], line->commands[0].argv)< 0){
+          char buff[1024];
+          char *salida = "No se ha encontrado el mandato\n";
+          strcpy(buff, salida);
+          fputs(buff, stderr);
+        }
+    }else if(sig == SIGUSR2){
+        if(cont != line->ncommands-1){
+            close(pipe_des1[1]);
+            close(pipe_des2[0]);
+            close(STDIN_FILENO);
+            dup(pipe_des2[0]);
+            close(STDOUT_FILENO);
+            dup(pipe_des1[1]);
+
+            if(execvp(line->commands[0].argv[0], line->commands[0].argv)< 0){
+                printf("Error al ejecutar el comando %s\n", line->commands[cont]);
+            }
+
+            kill(SIGUSR2, hijos[cont+1]);
+        }
+
+
+    }
       exit(0);
 }
 
@@ -95,6 +114,6 @@ int main(void) {
         printf("msh> ");
 
 	}
-    
+
 	return 0;
 }
