@@ -41,19 +41,19 @@ int main(void) {
 
 
     	if (line->redirect_output != NULL) {
-            if(pid == 0){
-                printf("redireccion de salida: %s\n", line->redirect_output);
-                close(fd[0]);
-                close(STDOUT_FILENO);
-                p_p = fopen(line->redirect_output, "w");
-                dup2(p_p, fd[1]);
-                kill(pid1 , SIGUSR2);
-                close(fd[1]);
-            }
+
+            printf("redireccion de salida: %s\n", line->redirect_output);
+            close(fd[0]);
+            close(STDOUT_FILENO);
+            p_p = fopen(line->redirect_output, "w");
+            dup2(p_p, fd[1]);
+            kill(pid1 , SIGUSR2);
+            close(fd[1]);
+
         }
 
         if (line->redirect_error != NULL) {
-            if(pid == 0){
+            //if(pid == 0){
                 printf("redireccion de error: %s\n", line->redirect_error);
                 close(fd[0]);
                 close(STDERR_FILENO);
@@ -61,7 +61,7 @@ int main(void) {
                 dup2(p_p, fd[1]);
                 kill(pid1, SIGUSR2);
                 close(fd[1]);
-            }
+            //}
         }
 
 		if (line->background) {
