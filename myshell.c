@@ -32,6 +32,8 @@ int main(void) {
 	int **pipes;
 	int status;
 	char *dir;
+	char *salida;
+	char buff[1024];
 
     typedef struct{
         char nombre[1024];
@@ -139,6 +141,7 @@ int main(void) {
 				printf("redirección de entrada: %s\n", line->redirect_input);
 				archivo = fopen(line->redirect_input, "r");
 				fscanf(archivo, "%s", buf2);
+
 				if(chdir(buf2) != 0){
 				  fprintf(stderr, "Error: %s\n", strerror(errno));
 				}
@@ -158,7 +161,7 @@ int main(void) {
 						fichero = open(line->redirect_error, O_WRONLY);
 						dup2(fichero, 2);
 					}
-				  fprintf(stderr, "Error: %s\n", strerror(errno));
+				  fprintf(stderr, "Error: %s", strerror(errno));
 				}
 			}
 
@@ -171,7 +174,18 @@ int main(void) {
                     printf("redirección de entrada: %s\n", line->redirect_input);
                     close(fd[1]);
                     close(STDIN_FILENO);
-                    p_h = open(line->redirect_input, O_RDONLY);
+					if(open(line->redirect_input, O_RDONLY) < 0){
+						salida = line->redirect_input;
+						strcat(salida, ": Error.");
+						strcat(salida, strerror(errno));
+						strcat(salida, "\n");
+                        strcpy(buff, salida);
+                        fputs(buff, stderr);
+						exit(1);
+					}else{
+						p_h = open(line->redirect_input, O_RDONLY);
+					}
+
                     dup2(p_h, fd[0]);
                     close(fd[0]);
                 }
@@ -182,8 +196,19 @@ int main(void) {
                     printf("redireccion de salida: %s\n", line->redirect_output);
                     close(fd[0]);
                     close(STDOUT_FILENO);
-                    p_h = open(line->redirect_output, O_RDONLY);
-                    dup2(p_h, fd[1]);
+					if(open(line->redirect_output, O_WRONLY | O_CREAT | O_TRUNC, 0600) < 0){
+						salida = line->redirect_output;
+						strcat(salida, ": Error.");
+						strcat(salida, strerror(errno));
+						strcat(salida, "\n");
+                        strcpy(buff, salida);
+                        fputs(buff, stderr);
+						exit(1);
+					}else{
+							p_h = open(line->redirect_output, O_WRONLY | O_CREAT | O_TRUNC, 0600);
+					}
+
+                    dup2(p_h, 1);
                     close(fd[1]);
                 }
             }
@@ -193,7 +218,17 @@ int main(void) {
                     printf("redireccion de error: %s\n", line->redirect_error);
                     close(fd[0]);
                     close(STDERR_FILENO);
-                    p_h = open(line->redirect_error, O_WRONLY);
+                    if(open(line->redirect_error, O_WRONLY | O_CREAT | O_TRUNC, 0600) < 0){
+						salida = line->redirect_error;
+						strcat(salida, ": Error.");
+						strcat(salida, strerror(errno));
+						strcat(salida, "\n");
+                        strcpy(buff, salida);
+                        fputs(buff, stderr);
+						exit(1);
+					}else{
+						p_h = open(line->redirect_error, O_WRONLY | O_CREAT | O_TRUNC, 0600);
+					}
                     dup2(p_h, fd[1]);
                     close(fd[1]);
                 }
@@ -225,8 +260,9 @@ int main(void) {
 					signal(SIGINT, SIG_IGN);
 					signal(SIGQUIT, SIG_IGN);
                     if(execvp(line->commands[0].argv[0], line->commands[0].argv) < 0){
-                        char buff[1024];
-                        char *salida = "No se ha encontrado el mandato.\n";
+
+						salida = line->commands[0].argv[0];
+						strcat(salida, ": No se ha encontrado el mandato.\n");
                         strcpy(buff, salida);
                         fputs(buff, stderr);
 						exit(1);
@@ -248,14 +284,15 @@ int main(void) {
 					signal(SIGQUIT, SIG_DFL);
 
                     if(execvp(line->commands[0].argv[0], line->commands[0].argv)< 0){
-                        char buff[1024];
-                        char *salida = "No se ha encontrado el mandato.\n";
+
+						salida = line->commands[0].argv[0];
+						strcat(salida, ": No se ha encontrado el mandato.\n");
                         strcpy(buff, salida);
                         fputs(buff, stderr);
 						exit(1);
                     }
                 }else{
-                    waitpid(pid, NULL, 0);
+                    waitpid(pid, &status, 0);
                 }
             }
 
@@ -284,7 +321,18 @@ int main(void) {
                             printf("redirección de entrada: %s\n", line->redirect_input);
                             close(fd[1]);
                             close(STDIN_FILENO);
-                            p_h = open(line->redirect_input, O_RDONLY);
+							if(open(line->redirect_input, O_RDONLY) < 0){
+								salida = line->redirect_input;
+								strcat(salida, ": Error.");
+								strcat(salida, strerror(errno));
+								strcat(salida, "\n");
+		                        strcpy(buff, salida);
+		                        fputs(buff, stderr);
+								exit(1);
+							}else{
+								p_h = open(line->redirect_input, O_RDONLY);
+							}
+
                             dup2(p_h, fd[0]);
                             close(fd[0]);
                         }
@@ -324,7 +372,18 @@ int main(void) {
                             printf("redireccion de salida: %s\n", line->redirect_output);
                             close(fd[0]);
                             close(STDOUT_FILENO);
-                            p_h = open(line->redirect_output, O_WRONLY);
+							if(open(line->redirect_output, O_WRONLY | O_CREAT | O_TRUNC, 0600) < 0){
+								salida = line->redirect_output;
+								strcat(salida, ": Error.");
+								strcat(salida, strerror(errno));
+								strcat(salida, "\n");
+		                        strcpy(buff, salida);
+		                        fputs(buff, stderr);
+								exit(1);
+							}else{
+								p_h = open(line->redirect_output, O_WRONLY | O_CREAT | O_TRUNC, 0600);
+							}
+
                             dup2(p_h, fd[1]);
                             close(fd[1]);
                         }
@@ -332,7 +391,18 @@ int main(void) {
                             printf("redireccion de error: %s\n", line->redirect_error);
                             close(fd[0]);
                             close(STDERR_FILENO);
-                            p_h = open(line->redirect_error, O_WRONLY);
+							if(open(line->redirect_error, O_WRONLY | O_CREAT | O_TRUNC, 0600) < 0){
+								salida = line->redirect_error;
+								strcat(salida, ": Error.");
+								strcat(salida, strerror(errno));
+								strcat(salida, "\n");
+		                        strcpy(buff, salida);
+		                        fputs(buff, stderr);
+								exit(1);
+							}else{
+								p_h = open(line->redirect_error, O_WRONLY | O_CREAT | O_TRUNC, 0600);
+							}
+
                             dup2(p_h, fd[1]);
                             close(fd[1]);
                         }
@@ -346,13 +416,17 @@ int main(void) {
                         close(STDIN_FILENO);
                         dup(pipes[i-1][0]);
                     }
+					signal(SIGINT, SIG_DFL);
+					signal(SIGQUIT, SIG_DFL);
+
 
                     if (execv(line->commands[i].filename, line->commands[i].argv) < 0){
-        				char buff[1024];
-        				char *salida = "No se ha encontrado el mandato\n";
-        				strcpy(buff, salida);
-        				fputs(buff, stderr);
-        				exit(1);
+
+						salida = line->commands[i].argv[0];
+						strcat(salida, ": No se ha encontrado el mandato.\n");
+                        strcpy(buff, salida);
+                        fputs(buff, stderr);
+						exit(1);
         			}
                 }else{
                     hijos[i] = pid;
@@ -365,7 +439,8 @@ int main(void) {
             }
 
             for(int k = 0; k<line->ncommands; k++){
-                waitpid(hijos[k], NULL, 0);
+                waitpid(hijos[k], &status, 0);
+
             }
 
             free(pipes);
@@ -373,7 +448,10 @@ int main(void) {
         }
 
 
-
+		if(WIFSIGNALED(status)){
+			printf("\n");
+		}
+		status = 0;
         printf("msh> ");
     }
 	return 0;
