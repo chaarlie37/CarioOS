@@ -136,6 +136,7 @@ int main(void) {
 				printf("redirección de entrada: %s\n", line->redirect_input);
 				archivo = fopen(line->redirect_input, "r");
 				fscanf(archivo, "%s", buf2);
+
 				if(chdir(buf2) != 0){
 				  fprintf(stderr, "Error: %s\n", strerror(errno));
 				}
