@@ -62,9 +62,11 @@ int main(void) {
 
 
 
-
+	signal(SIGINT, SIG_IGN);
+	signal(SIGQUIT, SIG_IGN);
 	printf("msh> ");
 	while (fgets(buf, 1024, stdin)) {
+
         line = tokenize(buf);
 
 		for(int a = 0; a<contadorProcesosBackground; a++){
@@ -108,6 +110,10 @@ int main(void) {
         if (line==NULL) {
           continue;
         }
+
+		if(line->ncommands == 1 && strcmp(line->commands[0].argv[0],"exit")==0){
+			break;
+		}
 
 		if(line->ncommands == 1 && strcmp(line->commands[0].argv[0],"jobs")==0){
 			for(int a = 0; a<contadorProcesosBackground; a++){
@@ -163,6 +169,10 @@ int main(void) {
 				  fprintf(stderr, "Error: %s\n", strerror(errno));
 				}
 			}
+<<<<<<< HEAD
+=======
+
+>>>>>>> 2eb9e1c5ba0329939395df02eeb6879810f48e10
     	}else if(line->ncommands == 1){//Caso de que solo haya un mandato
             pipe(fd);
             pid = fork();
@@ -211,6 +221,8 @@ int main(void) {
                 if(pid < 0){
                     fprintf(stderr, "Error en la creacion del proceso hijo.\n");
                 }else if(pid == 0){
+					signal(SIGINT, SIG_IGN);
+					signal(SIGQUIT, SIG_IGN);
                     if(execvp(line->commands[0].argv[0], line->commands[0].argv) < 0){
                         char buff[1024];
                         char *salida = "No se ha encontrado el mandato.\n";
@@ -231,6 +243,8 @@ int main(void) {
                 if(pid < 0){
                     fprintf(stderr, "Error en la creacion del proceso hijo.\n");
                 }else if(pid == 0){
+					signal(SIGINT, SIG_DFL);
+					signal(SIGQUIT, SIG_DFL);
 
                     if(execvp(line->commands[0].argv[0], line->commands[0].argv)< 0){
                         char buff[1024];
