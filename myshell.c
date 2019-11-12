@@ -43,7 +43,7 @@ int main(void) {
     tProcesoBackground procesosBackground[10]; // hay que hacerlo dinamico tb
     int contadorProcesosBackground = 0;
 
-	float n = 150000;
+	float n = 100000;
 	printf("\n\n\n     ██████╗ █████╗ ██████╗ ██╗ ██████╗      ██████╗ ███████╗\n");
 	usleep(n);
 	printf("    ██╔════╝██╔══██╗██╔══██╗██║██╔═══██╗    ██╔═══██╗██╔════╝\n");
@@ -67,7 +67,13 @@ int main(void) {
 	printf("msh> ");
 	while (fgets(buf, 1024, stdin)) {
 
+
+
         line = tokenize(buf);
+
+		if (line==NULL) {
+		  continue;
+		}
 
 		if(line->ncommands == 1 && strcmp(line->commands[0].argv[0],"exit")==0){
 			break;
@@ -92,9 +98,7 @@ int main(void) {
 			}
 		}
 
-        if (line==NULL) {
-          continue;
-        }
+
 
 		if(line->ncommands == 1 && strcmp(line->commands[0].argv[0],"jobs")==0){
 			for(int a = 0; a<contadorProcesosBackground; a++){
@@ -231,6 +235,7 @@ int main(void) {
                         char *salida = "No se ha encontrado el mandato.\n";
                         strcpy(buff, salida);
                         fputs(buff, stderr);
+						exit(1);
                     }
                 }else{
                     waitpid(pid, NULL, 0);
