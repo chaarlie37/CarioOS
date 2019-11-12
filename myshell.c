@@ -40,7 +40,9 @@ int main(void) {
 		int status;  // 0 Running, 1 Done
     } tProcesoBackground;
 
-    tProcesoBackground procesosBackground[10]; // hay que hacerlo dinamico tb
+    //tProcesoBackground procesosBackground[10]; // hay que hacerlo dinamico tb
+	tProcesoBackground **procesosBackground;
+	tProcesoBackground *procesoBackground;
     int contadorProcesosBackground = 0;
 
 	float n = 100000;
@@ -80,16 +82,16 @@ int main(void) {
 		}
 
 		for(int a = 0; a<contadorProcesosBackground; a++){
-			if(procesosBackground[a].status == 0){
-				if(waitpid(procesosBackground[a].pid, &status, WNOHANG) < 0){
-					procesosBackground[a].status = 1;
+			if(procesosBackground[a]->status == 0){
+				if(waitpid(procesosBackground[a]->pid, &status, WNOHANG) != 0){
 					if(WIFEXITED(status) != 0){
+						procesosBackground[a]->status = 1;
 						if(WEXITSTATUS(status) != 0){
-							printf("HA DAO ERROR EL HIJO\n");
-							procesosBackground[contadorProcesosBackground].pid = -1;
-							strcpy(procesosBackground[contadorProcesosBackground].nombre, "");
-							procesosBackground[contadorProcesosBackground].n = -1;
-							procesosBackground[contadorProcesosBackground].status = -1;
+							procesosBackground[a]->pid = -1;
+							strcpy(procesosBackground[a]->nombre, "");
+							procesosBackground[a]->n = -1;
+							procesosBackground[a]->status = -1;
+							free(procesosBackground[a]);
 							if(contadorProcesosBackground>0)
 								contadorProcesosBackground--;
 						}
@@ -102,12 +104,13 @@ int main(void) {
 
 		if(line->ncommands == 1 && strcmp(line->commands[0].argv[0],"jobs")==0){
 			for(int a = 0; a<contadorProcesosBackground; a++){
-				if(procesosBackground[a].status == 0){
-					printf("[%d]+   Running    %s\n", procesosBackground[a].n, procesosBackground[a].nombre);
-				}else if(procesosBackground[a].status == 1){
-					printf("[%d]+   Done       %s\n", procesosBackground[a].n, procesosBackground[a].nombre);
+				if(procesosBackground[a]->status == 0){
+					printf("[%d]+   Running    %s\n", procesosBackground[a]->n, procesosBackground[a]->nombre);
+				}else if(procesosBackground[a]->status == 1){
+					printf("[%d]+   Done       %s\n", procesosBackground[a]->n, procesosBackground[a]->nombre);
 					//AQUI SE ELIMINARIA DE LA LISTA EN DINAMICO, PONGO STATUS A -1 PARA QUE NO SALGA EN OTRO JOBS
-					procesosBackground[a].status = -1;
+					procesosBackground[a]->status = -1;
+					free(procesosBackground[a]);
 				}
 			}
 			printf("msh> ");
@@ -118,12 +121,14 @@ int main(void) {
 			if(!(line->commands[0].argv[1] == NULL)){
 				int procesoBg = atoi(line->commands[0].argv[1]);
 				if(!(procesoBg < 1 || procesoBg > contadorProcesosBackground)){
-					waitpid(procesosBackground[procesoBg-1].pid, NULL, 0);
+					waitpid(procesosBackground[procesoBg-1]->pid, NULL, 0);
+					procesosBackground[contadorProcesosBackground]->status = 1;
 				}else{
 					printf("myshell: fg: %d: no existe ese trabajo\n", procesoBg);
 				}
 			}else{
-				waitpid(procesosBackground[contadorProcesosBackground].pid, NULL, 0);
+				waitpid(procesosBackground[contadorProcesosBackground-1]->pid, NULL, 0);
+				procesosBackground[contadorProcesosBackground-1]->status = 1;
 			}
 			printf("msh> ");
 			continue;
@@ -195,6 +200,18 @@ int main(void) {
             }
 
       		if (line->background) {
+				if(contadorProcesosBackground == 0){
+					procesoBackground = (tProcesoBackground *) malloc(sizeof(tProcesoBackground));
+					procesosBackground = (tProcesoBackground **) malloc(sizeof(tProcesoBackground*));
+				}
+				else{
+					procesoBackground = (tProcesoBackground *) malloc(sizeof(tProcesoBackground));
+					//tProcesoBackground **tmp = (tProcesoBackground **) realloc(procesosBackground, (contadorProcesosBackground+1) * (sizeof(tProcesoBackground*) + sizeof(tProcesoBackground)));
+					tProcesoBackground **tmp = (tProcesoBackground **) realloc(procesosBackground, (contadorProcesosBackground+1) * sizeof(tProcesoBackground*));
+					procesosBackground = tmp;
+
+				}
+				procesosBackground[contadorProcesosBackground] = procesoBackground;
 				char buff[1024];
 				strcpy(buff, "");
 				for(int a = 0; a < line->commands[0].argc; a++){
@@ -216,11 +233,11 @@ int main(void) {
                     }
                 }else{
 					contadorProcesosBackground++;
-					procesosBackground[contadorProcesosBackground-1].pid = pid;
-					strcpy(procesosBackground[contadorProcesosBackground-1].nombre, buff);
-					procesosBackground[contadorProcesosBackground-1].n = contadorProcesosBackground;
-					procesosBackground[contadorProcesosBackground-1].status = 0;
-                    printf("[%d] %d\n", contadorProcesosBackground , procesosBackground[contadorProcesosBackground-1].pid);
+					procesosBackground[contadorProcesosBackground-1]->pid = pid;
+					strcpy(procesosBackground[contadorProcesosBackground-1]->nombre, buff);
+					procesosBackground[contadorProcesosBackground-1]->n = contadorProcesosBackground;
+					procesosBackground[contadorProcesosBackground-1]->status = 0;
+                    printf("[%d] %d\n", contadorProcesosBackground , procesosBackground[contadorProcesosBackground-1]->pid);
 					sleep(1);
                 }
             }else{
@@ -255,7 +272,10 @@ int main(void) {
             }
             pipe(fd);
             for (i=0; i<line->ncommands; i++) {
+
                 pid = fork();
+
+
                 if(pid < 0){
                     fprintf(stderr, "Error al crear el hijo\n");
                 }else if (pid == 0){
