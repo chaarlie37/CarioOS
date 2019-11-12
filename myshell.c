@@ -124,8 +124,15 @@ int main(void) {
 		}
 
 		if(line->ncommands == 1 && strcmp(line->commands[0].argv[0],"fg")==0){
-			int procesoBg = atoi(line->commands[0].argv[1]);
-			waitpid(procesosBackground[procesoBg-1].pid, NULL, 0);
+			if(!(line->commands[0].argv[1] == NULL)){
+				int procesoBg = atoi(line->commands[0].argv[1]);
+				if(!(procesoBg < 1 || procesoBg > contadorProcesosBackground)){
+					waitpid(procesosBackground[procesoBg-1].pid, NULL, 0);
+				}
+			}else{
+				waitpid(procesosBackground[contadorProcesosBackground].pid, NULL, 0);
+			}
+			printf("msh> ");
 			continue;
 		}
 
@@ -156,13 +163,6 @@ int main(void) {
 				  fprintf(stderr, "Error: %s\n", strerror(errno));
 				}
 			}
-<<<<<<< HEAD
-=======
-
-
-
-
->>>>>>> 6085559d99bdcb0a03063473bfd1ab370e574a9e
     	}else if(line->ncommands == 1){//Caso de que solo haya un mandato
             pipe(fd);
             pid = fork();
