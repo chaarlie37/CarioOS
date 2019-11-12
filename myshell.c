@@ -16,6 +16,9 @@
 // -Revisar mensajes y casos de error
 
 int main(void) {
+
+
+
 	char buf[1024];
 	tline * line;
 	int i;
@@ -24,24 +27,81 @@ int main(void) {
 	FILE *p_p;
 	int *hijos;
 	int **pipes;
+	int status;
 
     typedef struct{
-        char * nombre;
+        char *nombre;
         int n;
         int pid;
+		int status;  // 0 Running, 1 Done
     } tProcesoBackground;
 
     tProcesoBackground procesosBackground[10]; // hay que hacerlo dinamico tb
     int contadorProcesosBackground = 0;
+
+	float n = 150000;
+	printf("\n\n\n     ██████╗ █████╗ ██████╗ ██╗ ██████╗      ██████╗ ███████╗\n");
+	usleep(n);
+	printf("    ██╔════╝██╔══██╗██╔══██╗██║██╔═══██╗    ██╔═══██╗██╔════╝\n");
+	usleep(n);
+	printf("    ██║     ███████║██████╔╝██║██║   ██║    ██║   ██║███████╗\n");
+	usleep(n);
+	printf("    ██║     ██╔══██║██╔══██╗██║██║   ██║    ██║   ██║╚════██║\n");
+	usleep(n);
+	printf("    ╚██████╗██║  ██║██║  ██║██║╚██████╔╝    ╚██████╔╝███████║\n");
+	usleep(n);
+	printf("     ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝ ╚═════╝      ╚═════╝ ╚══════╝\n\n\n");
+	usleep(n);
+	printf("Práctica MINISHELL para Sistemas Operativos. Universidad Rey Juan Carlos.\n");
+	printf("Hecho por Carlos Sánchez Muñoz y Mario Manzaneque Ruiz. Noviembre de 2019.\n\n\n");
+
+
+
 
 
 	printf("msh> ");
 	while (fgets(buf, 1024, stdin)) {
         line = tokenize(buf);
 
+		for(int a = 0; a<contadorProcesosBackground; a++){
+			if(procesosBackground[a].status == 0){
+				if(waitpid(procesosBackground[a].pid, &status, WNOHANG) < 0){
+					procesosBackground[a].status = 1;
+				}
+				/*
+				if(status != NULL){
+					if(WIFEXITED(status)){
+						printf("STATUS: %s\n", WEXITSTATUS(status));
+						procesosBackground[a].status = 1;		// PREGUNTAR ESTO
+					}
+				}
+				*/
+			}
+		}
+
         if (line==NULL) {
           continue;
         }
+
+		if(line->ncommands == 1 && strcmp(line->commands[0].argv[0],"jobs")==0){
+			for(int a = 0; a<contadorProcesosBackground; a++){
+				if(procesosBackground[a].status == 0){
+					printf("[%d]+   Running    %s\n", procesosBackground[a].n, procesosBackground[a].nombre);
+				}else if(procesosBackground[a].status == 1){
+					printf("[%d]+   Done       %s\n", procesosBackground[a].n, procesosBackground[a].nombre);
+					//AQUI SE ELIMINARIA DE LA LISTA EN DINAMICO, PONGO STATUS A -1 PARA QUE NO SALGA EN OTRO JOBS
+					procesosBackground[a].status = -1;
+				}
+			}
+			printf("msh> ");
+			continue;
+		}
+
+		if(line->ncommands == 1 && strcmp(line->commands[0].argv[0],"fg")==0){
+			int procesoBg = atoi(line->commands[0].argv[1]);
+			waitpid(procesosBackground[procesoBg-1].pid, NULL, 0);
+			continue;
+		}
 
     	if(line->ncommands == 1 && strcmp(line->commands[0].argv[0],"cd")==0){
     		if(chdir(line->commands[0].argv[1]) != 0){
@@ -85,31 +145,33 @@ int main(void) {
             }
 
       		if (line->background) {
-
+				char buff[1024];
+				strcpy(buff, "");
+				for(int a = 0; a < line->commands[0].argc; a++){
+					strcat(buff, line->commands[0].argv[a]);
+					strcat(buff, " ");
+				}
+				strcat(buff, " &");
                 if(pid < 0){
                     fprintf(stderr, "Error en la creacion del proceso hijo.\n");
                 }else if(pid == 0){
-                    int pid2 = fork();
-                    if(pid2 == 0){
-                        procesosBackground[contadorProcesosBackground-1].pid = getpid();
+
                         if(execvp(line->commands[0].argv[0], line->commands[0].argv)< 0){
                             char buff[1024];
                             char *salida = "No se ha encontrado el mandato.\n";
                             strcpy(buff, salida);
                             fputs(buff, stderr);
+							continue;
                         }
-                    }
-                    else{
-                        wait(NULL);
-                    }
                 }else{
-                    contadorProcesosBackground++;
-                    procesosBackground[contadorProcesosBackground-1].nombre = line->commands[0].argv[0];
-                    procesosBackground[contadorProcesosBackground-1].n = contadorProcesosBackground;
-                    printf("Ejecutando en segundo plano el mandato %s\n", line->commands[0].argv[0]);
-                    printf("El jobs mostraria esto:\n");
-                    printf("[%d]+   Running    %s\n", procesosBackground[contadorProcesosBackground-1].n, procesosBackground[contadorProcesosBackground-1].nombre);
-                    sleep(1);
+					contadorProcesosBackground++;
+					procesosBackground[contadorProcesosBackground-1].pid = pid;
+
+					procesosBackground[contadorProcesosBackground-1].nombre = buff;
+					procesosBackground[contadorProcesosBackground-1].n = contadorProcesosBackground;
+					procesosBackground[contadorProcesosBackground-1].status = 0;
+                    printf("[%d] %d\n", contadorProcesosBackground , procesosBackground[contadorProcesosBackground-1].pid);
+					sleep(1);
                 }
             }else{
                 if(pid < 0){
@@ -261,6 +323,9 @@ int main(void) {
             free(pipes);
             free(hijos);
         }
+
+
+
         printf("msh> ");
     }
 	return 0;
