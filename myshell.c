@@ -31,7 +31,7 @@ int main(void) {
 	char *dir;
 
     typedef struct{
-        char *nombre;
+        char nombre[1024];
         int n;
         int pid;
 		int status;  // 0 Running, 1 Done
@@ -65,18 +65,40 @@ int main(void) {
         line = tokenize(buf);
 
 		for(int a = 0; a<contadorProcesosBackground; a++){
-			if(procesosBackground[a].status == 0){
-				if(waitpid(procesosBackground[a].pid, &status, WNOHANG) < 0){
-					procesosBackground[a].status = 1;
-				}
-				/*
-				if(status != NULL){
-					if(WIFEXITED(status)){
-						printf("STATUS: %s\n", WEXITSTATUS(status));
-						procesosBackground[a].status = 1;		// PREGUNTAR ESTO
+			printf("VER SI ESPERAR A LOS BG\n");
+			/*
+			kill(procesosBackground[a].pid, 0);
+			strerror(errno);
+			printf("ERROR: %d\n", errno);
+			if(errno == ESRCH){
+				printf("ERROR QUE ME INTERESA\n");
+
+			}else{
+			*/
+				if(procesosBackground[a].status == 0){
+					if(waitpid(procesosBackground[a].pid, &status, WNOHANG) < 0){
+						procesosBackground[a].status = 1;
 					}
-				}
-				*/
+					if(WIFEXITED(status) != 0){
+						if(WEXITSTATUS(status) != 0){
+							printf("HA DAO ERROR EL HIJO\n");
+							procesosBackground[contadorProcesosBackground].pid = -1;
+							strcpy(procesosBackground[contadorProcesosBackground].nombre, "");
+							procesosBackground[contadorProcesosBackground].n = -1;
+							procesosBackground[contadorProcesosBackground].status = -1;
+							if(contadorProcesosBackground>0)
+								contadorProcesosBackground--;
+						}
+					}
+					/*
+					if(status != NULL){
+						if(WIFEXITED(status)){
+							printf("STATUS: %s\n", WEXITSTATUS(status));
+							procesosBackground[a].status = 1;		// PREGUNTAR ESTO
+						}
+					}
+					*/
+				//}
 			}
 		}
 
@@ -114,7 +136,6 @@ int main(void) {
 			if(chdir(dir) != 0){
 			  fprintf(stderr, "Error: %s\n", strerror(errno));
 			}
-
     	}else if(line->ncommands == 1){//Caso de que solo haya un mandato
             pipe(fd);
             pid = fork();
@@ -163,19 +184,17 @@ int main(void) {
                 if(pid < 0){
                     fprintf(stderr, "Error en la creacion del proceso hijo.\n");
                 }else if(pid == 0){
-
-                        if(execvp(line->commands[0].argv[0], line->commands[0].argv)< 0){
-                            char buff[1024];
-                            char *salida = "No se ha encontrado el mandato.\n";
-                            strcpy(buff, salida);
-                            fputs(buff, stderr);
-							continue;
-                        }
+                    if(execvp(line->commands[0].argv[0], line->commands[0].argv) < 0){
+                        char buff[1024];
+                        char *salida = "No se ha encontrado el mandato.\n";
+                        strcpy(buff, salida);
+                        fputs(buff, stderr);
+						exit(1);
+                    }
                 }else{
 					contadorProcesosBackground++;
 					procesosBackground[contadorProcesosBackground-1].pid = pid;
-
-					procesosBackground[contadorProcesosBackground-1].nombre = buff;
+					strcpy(procesosBackground[contadorProcesosBackground-1].nombre, buff);
 					procesosBackground[contadorProcesosBackground-1].n = contadorProcesosBackground;
 					procesosBackground[contadorProcesosBackground-1].status = 0;
                     printf("[%d] %d\n", contadorProcesosBackground , procesosBackground[contadorProcesosBackground-1].pid);
