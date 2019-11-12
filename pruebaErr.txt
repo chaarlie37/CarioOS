@@ -1,1 +1,24 @@
-/home
+total 3060
+drwxrwxr-x 4 mario mario    4096 nov 12 18:54 .
+drwxr-xr-x 8 mario mario    4096 nov  6 19:46 ..
+drwxrwxr-x 7 mario mario    4096 nov 12 18:07 .git
+drwxrwxr-x 2 mario mario    4096 nov 12 09:10 .idea
+-rw-rw-r-- 1 mario mario   20730 oct 31 12:56 libparser_64.a
+-rw-rw-r-- 1 mario mario   19650 oct 31 12:56 libparser.a
+-rwxr-xr-x 1 mario mario 1011136 nov 12 18:54 myshell
+-rw-rw-r-- 1 mario mario   12389 nov 12 18:54 myshell.c
+-rw-rw-r-- 1 mario mario     267 oct 31 12:56 parser.h
+-rwxrwxr-x 1 mario mario  180384 nov 12 09:10 practicaarrays
+-rw-rw-r-- 1 mario mario   15728 nov 12 09:10 practicaarrays.o
+-rw-rw-r-- 1 mario mario    1996 nov 12 09:10 practicaarrays.pas
+-rwxrwxr-x 1 mario mario    8304 oct 29 11:59 prueba
+-rw-rw-r-- 1 mario mario     172 oct 29 11:59 prueba.c
+-rw-rw-r-- 1 mario mario      67 nov 12 11:59 pruebaCat.txt
+-rw-rw-r-- 1 mario mario      33 nov 12 11:49 pruebaCdMal.txt
+-rw-r--r-- 1 mario mario      23 nov 12 11:41 pruebaErrr.txt
+-rw-rw-r-- 1 mario mario     104 nov 12 18:54 pruebaErr.txt
+-rwxr-xr-x 1 mario mario  893312 nov 12 11:20 pruebaShell
+-rw-rw-r-- 1 mario mario   10975 nov 11 20:06 pruebaShell.c
+-rw-rw-r-- 1 mario mario      61 nov 12 09:10 prueba.txt
+-rwxrwxr-x 1 mario mario  883848 nov  8 14:18 test
+-rw-rw-r-- 1 mario mario     879 nov  8 14:18 test.c
