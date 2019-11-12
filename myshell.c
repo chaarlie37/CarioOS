@@ -25,9 +25,9 @@ int main(void) {
 	int i;
 	int pid;
 	int fd[2];
-	FILE *p_p;
 	FILE *archivo;
 	int fichero;
+	int p_h;
 	int *hijos;
 	int **pipes;
 	int status;
@@ -147,8 +147,8 @@ int main(void) {
                     printf("redirección de entrada: %s\n", line->redirect_input);
                     close(fd[1]);
                     close(STDIN_FILENO);
-                    p_p = fopen(line->redirect_input, "r");
-                    dup2(p_p, fd[0]);
+                    p_h = open(line->redirect_input, O_RDONLY);
+                    dup2(p_h, fd[0]);
                     close(fd[0]);
                 }
             }
@@ -158,8 +158,8 @@ int main(void) {
                     printf("redireccion de salida: %s\n", line->redirect_output);
                     close(fd[0]);
                     close(STDOUT_FILENO);
-                    p_p = fopen(line->redirect_output, "w");
-                    dup2(p_p, fd[1]);
+                    p_h = open(line->redirect_output, O_RDONLY);
+                    dup2(p_h, fd[1]);
                     close(fd[1]);
                 }
             }
@@ -169,8 +169,8 @@ int main(void) {
                     printf("redireccion de error: %s\n", line->redirect_error);
                     close(fd[0]);
                     close(STDERR_FILENO);
-                    p_p = fopen(line->redirect_error, "w");
-                    dup2(p_p, fd[1]);
+                    p_h = open(line->redirect_error, O_WRONLY);
+                    dup2(p_h, fd[1]);
                     close(fd[1]);
                 }
             }
@@ -242,8 +242,8 @@ int main(void) {
                             printf("redirección de entrada: %s\n", line->redirect_input);
                             close(fd[1]);
                             close(STDIN_FILENO);
-                            p_p = fopen(line->redirect_input, "r");
-                            dup2(p_p, fd[0]);
+                            p_h = open(line->redirect_input, O_RDONLY);
+                            dup2(p_h, fd[0]);
                             close(fd[0]);
                         }
                         if (line->redirect_output != NULL) {
@@ -307,16 +307,16 @@ int main(void) {
                             printf("redireccion de salida: %s\n", line->redirect_output);
                             close(fd[0]);
                             close(STDOUT_FILENO);
-                            p_p = fopen(line->redirect_output, "w");
-                            dup2(p_p, fd[1]);
+                            p_h = open(line->redirect_output, O_WRONLY);
+                            dup2(p_h, fd[1]);
                             close(fd[1]);
                         }
                         if (line->redirect_error != NULL) {
                             printf("redireccion de error: %s\n", line->redirect_error);
                             close(fd[0]);
                             close(STDERR_FILENO);
-                            p_p = fopen(line->redirect_error, "w");
-                            dup2(p_p, fd[1]);
+                            p_h = open(line->redirect_error, O_WRONLY);
+                            dup2(p_h, fd[1]);
                             close(fd[1]);
                         }
 
