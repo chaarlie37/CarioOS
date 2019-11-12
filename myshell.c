@@ -69,21 +69,14 @@ int main(void) {
 
         line = tokenize(buf);
 
-		for(int a = 0; a<contadorProcesosBackground; a++){
-			printf("VER SI ESPERAR A LOS BG\n");
-			/*
-			kill(procesosBackground[a].pid, 0);
-			strerror(errno);
-			printf("ERROR: %d\n", errno);
-			if(errno == ESRCH){
-				printf("ERROR QUE ME INTERESA\n");
+		if(line->ncommands == 1 && strcmp(line->commands[0].argv[0],"exit")==0){
+			break;
+		}
 
-			}else{
-			*/
-				if(procesosBackground[a].status == 0){
-					if(waitpid(procesosBackground[a].pid, &status, WNOHANG) < 0){
-						procesosBackground[a].status = 1;
-					}
+		for(int a = 0; a<contadorProcesosBackground; a++){
+			if(procesosBackground[a].status == 0){
+				if(waitpid(procesosBackground[a].pid, &status, WNOHANG) < 0){
+					procesosBackground[a].status = 1;
 					if(WIFEXITED(status) != 0){
 						if(WEXITSTATUS(status) != 0){
 							printf("HA DAO ERROR EL HIJO\n");
@@ -95,25 +88,13 @@ int main(void) {
 								contadorProcesosBackground--;
 						}
 					}
-					/*
-					if(status != NULL){
-						if(WIFEXITED(status)){
-							printf("STATUS: %s\n", WEXITSTATUS(status));
-							procesosBackground[a].status = 1;		// PREGUNTAR ESTO
-						}
-					}
-					*/
-				//}
+				}
 			}
 		}
 
         if (line==NULL) {
           continue;
         }
-
-		if(line->ncommands == 1 && strcmp(line->commands[0].argv[0],"exit")==0){
-			break;
-		}
 
 		if(line->ncommands == 1 && strcmp(line->commands[0].argv[0],"jobs")==0){
 			for(int a = 0; a<contadorProcesosBackground; a++){
@@ -134,6 +115,8 @@ int main(void) {
 				int procesoBg = atoi(line->commands[0].argv[1]);
 				if(!(procesoBg < 1 || procesoBg > contadorProcesosBackground)){
 					waitpid(procesosBackground[procesoBg-1].pid, NULL, 0);
+				}else{
+					printf("myshell: fg: %d: no existe ese trabajo\n", procesoBg);
 				}
 			}else{
 				waitpid(procesosBackground[contadorProcesosBackground].pid, NULL, 0);
@@ -169,10 +152,7 @@ int main(void) {
 				  fprintf(stderr, "Error: %s\n", strerror(errno));
 				}
 			}
-<<<<<<< HEAD
-=======
 
->>>>>>> 2eb9e1c5ba0329939395df02eeb6879810f48e10
     	}else if(line->ncommands == 1){//Caso de que solo haya un mandato
             pipe(fd);
             pid = fork();
