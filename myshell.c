@@ -155,7 +155,7 @@ int main(void) {
 						fichero = open(line->redirect_error, O_WRONLY);
 						dup2(fichero, 2);
 					}
-				  fprintf(stderr, "Error: %s\n", strerror(errno));
+				  fprintf(stderr, "Error: %s", strerror(errno));
 				}
 			}
 
@@ -168,7 +168,18 @@ int main(void) {
                     printf("redirección de entrada: %s\n", line->redirect_input);
                     close(fd[1]);
                     close(STDIN_FILENO);
-                    p_h = open(line->redirect_input, O_RDONLY);
+					if(open(line->redirect_input, O_RDONLY) < 0){
+						salida = line->redirect_input;
+						strcat(salida, ": Error.");
+						strcat(salida, strerror(errno));
+						strcat(salida, "\n");
+                        strcpy(buff, salida);
+                        fputs(buff, stderr);
+						exit(1);
+					}else{
+						p_h = open(line->redirect_input, O_RDONLY);
+					}
+
                     dup2(p_h, fd[0]);
                     close(fd[0]);
                 }
@@ -179,7 +190,18 @@ int main(void) {
                     printf("redireccion de salida: %s\n", line->redirect_output);
                     close(fd[0]);
                     close(STDOUT_FILENO);
-					p_h = open(line->redirect_output, O_WRONLY | O_CREAT | O_TRUNC, 0600);
+					if(open(line->redirect_output, O_WRONLY | O_CREAT | O_TRUNC, 0600) < 0){
+						salida = line->redirect_output;
+						strcat(salida, ": Error.");
+						strcat(salida, strerror(errno));
+						strcat(salida, "\n");
+                        strcpy(buff, salida);
+                        fputs(buff, stderr);
+						exit(1);
+					}else{
+							p_h = open(line->redirect_output, O_WRONLY | O_CREAT | O_TRUNC, 0600);
+					}
+
                     dup2(p_h, 1);
                     close(fd[1]);
                 }
@@ -190,7 +212,17 @@ int main(void) {
                     printf("redireccion de error: %s\n", line->redirect_error);
                     close(fd[0]);
                     close(STDERR_FILENO);
-                    p_h = open(line->redirect_error, O_WRONLY | O_CREAT | O_TRUNC, 0600);
+                    if(open(line->redirect_error, O_WRONLY | O_CREAT | O_TRUNC, 0600) < 0){
+						salida = line->redirect_error;
+						strcat(salida, ": Error.");
+						strcat(salida, strerror(errno));
+						strcat(salida, "\n");
+                        strcpy(buff, salida);
+                        fputs(buff, stderr);
+						exit(1);
+					}else{
+						p_h = open(line->redirect_error, O_WRONLY | O_CREAT | O_TRUNC, 0600);
+					}
                     dup2(p_h, fd[1]);
                     close(fd[1]);
                 }
@@ -268,7 +300,18 @@ int main(void) {
                             printf("redirección de entrada: %s\n", line->redirect_input);
                             close(fd[1]);
                             close(STDIN_FILENO);
-                            p_h = open(line->redirect_input, O_RDONLY);
+							if(open(line->redirect_input, O_RDONLY) < 0){
+								salida = line->redirect_input;
+								strcat(salida, ": Error.");
+								strcat(salida, strerror(errno));
+								strcat(salida, "\n");
+		                        strcpy(buff, salida);
+		                        fputs(buff, stderr);
+								exit(1);
+							}else{
+								p_h = open(line->redirect_input, O_RDONLY);
+							}
+
                             dup2(p_h, fd[0]);
                             close(fd[0]);
                         }
@@ -308,7 +351,18 @@ int main(void) {
                             printf("redireccion de salida: %s\n", line->redirect_output);
                             close(fd[0]);
                             close(STDOUT_FILENO);
-                            p_h = open(line->redirect_output, O_WRONLY | O_CREAT | O_TRUNC, 0600);
+							if(open(line->redirect_output, O_WRONLY | O_CREAT | O_TRUNC, 0600) < 0){
+								salida = line->redirect_output;
+								strcat(salida, ": Error.");
+								strcat(salida, strerror(errno));
+								strcat(salida, "\n");
+		                        strcpy(buff, salida);
+		                        fputs(buff, stderr);
+								exit(1);
+							}else{
+								p_h = open(line->redirect_output, O_WRONLY | O_CREAT | O_TRUNC, 0600);
+							}
+
                             dup2(p_h, fd[1]);
                             close(fd[1]);
                         }
@@ -316,7 +370,18 @@ int main(void) {
                             printf("redireccion de error: %s\n", line->redirect_error);
                             close(fd[0]);
                             close(STDERR_FILENO);
-                            p_h = open(line->redirect_error, O_WRONLY | O_CREAT | O_TRUNC, 0600);
+							if(open(line->redirect_error, O_WRONLY | O_CREAT | O_TRUNC, 0600) < 0){
+								salida = line->redirect_error;
+								strcat(salida, ": Error.");
+								strcat(salida, strerror(errno));
+								strcat(salida, "\n");
+		                        strcpy(buff, salida);
+		                        fputs(buff, stderr);
+								exit(1);
+							}else{
+								p_h = open(line->redirect_error, O_WRONLY | O_CREAT | O_TRUNC, 0600);
+							}
+
                             dup2(p_h, fd[1]);
                             close(fd[1]);
                         }
