@@ -20,11 +20,14 @@ int main(void) {
 
 
 	char buf[1024];
+	char buf2[1024];
 	tline * line;
 	int i;
 	int pid;
 	int fd[2];
 	FILE *p_p;
+	FILE *archivo;
+	int fichero;
 	int *hijos;
 	int **pipes;
 	int status;
@@ -105,15 +108,35 @@ int main(void) {
 		}
 
     	if(line->ncommands == 1 && strcmp(line->commands[0].argv[0],"cd")==0){
-			if(line->commands[0].argc == 2){
-				dir = line->commands[0].argv[1];
+			if (line->redirect_input != NULL){
+				printf("redirección de entrada: %s\n", line->redirect_input);
+				archivo = fopen(line->redirect_input, "r");
+				fscanf(archivo, "%s", buf2);
+				if(chdir(buf2) != 0){
+				  fprintf(stderr, "Error: %s\n", strerror(errno));
+				}
 
 			}else{
-				dir = getenv("HOME");
+
+
+				if(line->commands[0].argc == 2){
+					dir = line->commands[0].argv[1];
+
+				}else{
+
+					dir = getenv("HOME");
+				}
+				if(chdir(dir) != 0){
+					if(line->redirect_error != NULL){
+						fichero = open(line->redirect_error, O_WRONLY);
+						dup2(fichero, 2);
+					}
+				  fprintf(stderr, "Error: %s\n", strerror(errno));
+				}
 			}
-			if(chdir(dir) != 0){
-			  fprintf(stderr, "Error: %s\n", strerror(errno));
-			}
+
+
+
 
     	}else if(line->ncommands == 1){//Caso de que solo haya un mandato
             pipe(fd);
