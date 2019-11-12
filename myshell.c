@@ -20,11 +20,14 @@ int main(void) {
 
 
 	char buf[1024];
+	char buf2[1024];
 	tline * line;
 	int i;
 	int pid;
 	int fd[2];
-	FILE *p_p;
+	FILE *archivo;
+	int fichero;
+	int p_h;
 	int *hijos;
 	int **pipes;
 	int status;
@@ -127,15 +130,39 @@ int main(void) {
 		}
 
     	if(line->ncommands == 1 && strcmp(line->commands[0].argv[0],"cd")==0){
-			if(line->commands[0].argc == 2){
-				dir = line->commands[0].argv[1];
+			if (line->redirect_input != NULL){
+				printf("redirección de entrada: %s\n", line->redirect_input);
+				archivo = fopen(line->redirect_input, "r");
+				fscanf(archivo, "%s", buf2);
+				if(chdir(buf2) != 0){
+				  fprintf(stderr, "Error: %s\n", strerror(errno));
+				}
 
 			}else{
-				dir = getenv("HOME");
+
+
+				if(line->commands[0].argc == 2){
+					dir = line->commands[0].argv[1];
+
+				}else{
+
+					dir = getenv("HOME");
+				}
+				if(chdir(dir) != 0){
+					if(line->redirect_error != NULL){
+						fichero = open(line->redirect_error, O_WRONLY);
+						dup2(fichero, 2);
+					}
+				  fprintf(stderr, "Error: %s\n", strerror(errno));
+				}
 			}
-			if(chdir(dir) != 0){
-			  fprintf(stderr, "Error: %s\n", strerror(errno));
-			}
+<<<<<<< HEAD
+=======
+
+
+
+
+>>>>>>> 6085559d99bdcb0a03063473bfd1ab370e574a9e
     	}else if(line->ncommands == 1){//Caso de que solo haya un mandato
             pipe(fd);
             pid = fork();
@@ -145,8 +172,8 @@ int main(void) {
                     printf("redirección de entrada: %s\n", line->redirect_input);
                     close(fd[1]);
                     close(STDIN_FILENO);
-                    p_p = fopen(line->redirect_input, "r");
-                    dup2(p_p, fd[0]);
+                    p_h = open(line->redirect_input, O_RDONLY);
+                    dup2(p_h, fd[0]);
                     close(fd[0]);
                 }
             }
@@ -156,8 +183,8 @@ int main(void) {
                     printf("redireccion de salida: %s\n", line->redirect_output);
                     close(fd[0]);
                     close(STDOUT_FILENO);
-                    p_p = fopen(line->redirect_output, "w");
-                    dup2(p_p, fd[1]);
+                    p_h = open(line->redirect_output, O_RDONLY);
+                    dup2(p_h, fd[1]);
                     close(fd[1]);
                 }
             }
@@ -167,8 +194,8 @@ int main(void) {
                     printf("redireccion de error: %s\n", line->redirect_error);
                     close(fd[0]);
                     close(STDERR_FILENO);
-                    p_p = fopen(line->redirect_error, "w");
-                    dup2(p_p, fd[1]);
+                    p_h = open(line->redirect_error, O_WRONLY);
+                    dup2(p_h, fd[1]);
                     close(fd[1]);
                 }
             }
@@ -238,17 +265,11 @@ int main(void) {
                             printf("redirección de entrada: %s\n", line->redirect_input);
                             close(fd[1]);
                             close(STDIN_FILENO);
-                            p_p = fopen(line->redirect_input, "r");
-                            dup2(p_p, fd[0]);
+                            p_h = open(line->redirect_input, O_RDONLY);
+                            dup2(p_h, fd[0]);
                             close(fd[0]);
                         }
-                        if (line->redirect_output != NULL) {
-                            char buff[1024];
-                            char *salida = "No se puede hacer redireccion de salida en un comando que no sea el ultimo\n";
-                            strcpy(buff, salida);
-                            fputs(buff, stderr);
-                            exit(1);
-                        }
+
 
                         for(int c = 1; c < line->ncommands-1; c++){
                             close(pipes[c][0]);
@@ -261,20 +282,7 @@ int main(void) {
                     }
 
                     if (i > 0 && i < line->ncommands-1){
-                        if (line->redirect_output != NULL) {
-                            char buff[1024];
-                            char *salida = "No se puede hacer redireccion de salida en un mandato que no sea el ultimo\n";
-                            strcpy(buff, salida);
-                            fputs(buff, stderr);
-                            exit(1);
-                        }
-                        if (line->redirect_input != NULL) {
-                            char buff[1024];
-                            char *salida = "No se puede hacer redireccion de entrada en un mandato que no sea el primero\n";
-                            strcpy(buff, salida);
-                            fputs(buff, stderr);
-                            exit(1);
-                        }
+
 
                         for(int c = 0; c < line->ncommands-1; c++){
                             if(c != i && c != i-1){
@@ -292,27 +300,21 @@ int main(void) {
                     }
 
                     if(i == line->ncommands-1){
-                        if (line->redirect_input != NULL) {
-                            char buff[1024];
-                            char *salida = "No se puede hacer redireccion de entrada en un mandato que no sea el primero\n";
-                            strcpy(buff, salida);
-                            fputs(buff, stderr);
-                            exit(1);
-                        }
+
                         if (line->redirect_output != NULL) {
                             printf("redireccion de salida: %s\n", line->redirect_output);
                             close(fd[0]);
                             close(STDOUT_FILENO);
-                            p_p = fopen(line->redirect_output, "w");
-                            dup2(p_p, fd[1]);
+                            p_h = open(line->redirect_output, O_WRONLY);
+                            dup2(p_h, fd[1]);
                             close(fd[1]);
                         }
                         if (line->redirect_error != NULL) {
                             printf("redireccion de error: %s\n", line->redirect_error);
                             close(fd[0]);
                             close(STDERR_FILENO);
-                            p_p = fopen(line->redirect_error, "w");
-                            dup2(p_p, fd[1]);
+                            p_h = open(line->redirect_error, O_WRONLY);
+                            dup2(p_h, fd[1]);
                             close(fd[1]);
                         }
 
