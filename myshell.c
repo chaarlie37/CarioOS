@@ -28,6 +28,7 @@ int main(void) {
 	int *hijos;
 	int **pipes;
 	int status;
+	char *dir;
 
     typedef struct{
         char *nombre;
@@ -104,9 +105,16 @@ int main(void) {
 		}
 
     	if(line->ncommands == 1 && strcmp(line->commands[0].argv[0],"cd")==0){
-    		if(chdir(line->commands[0].argv[1]) != 0){
-    	      fprintf(stderr, "Error: %s\n", strerror(errno));
-    	    }
+			if(line->commands[0].argc == 2){
+				dir = line->commands[0].argv[1];
+
+			}else{
+				dir = getenv("HOME");
+			}
+			if(chdir(dir) != 0){
+			  fprintf(stderr, "Error: %s\n", strerror(errno));
+			}
+
     	}else if(line->ncommands == 1){//Caso de que solo haya un mandato
             pipe(fd);
             pid = fork();
