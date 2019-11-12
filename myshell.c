@@ -246,13 +246,7 @@ int main(void) {
                             dup2(p_h, fd[0]);
                             close(fd[0]);
                         }
-                        if (line->redirect_output != NULL) {
-                            char buff[1024];
-                            char *salida = "No se puede hacer redireccion de salida en un comando que no sea el ultimo\n";
-                            strcpy(buff, salida);
-                            fputs(buff, stderr);
-                            exit(1);
-                        }
+
 
                         for(int c = 1; c < line->ncommands-1; c++){
                             close(pipes[c][0]);
@@ -265,20 +259,7 @@ int main(void) {
                     }
 
                     if (i > 0 && i < line->ncommands-1){
-                        if (line->redirect_output != NULL) {
-                            char buff[1024];
-                            char *salida = "No se puede hacer redireccion de salida en un mandato que no sea el ultimo\n";
-                            strcpy(buff, salida);
-                            fputs(buff, stderr);
-                            exit(1);
-                        }
-                        if (line->redirect_input != NULL) {
-                            char buff[1024];
-                            char *salida = "No se puede hacer redireccion de entrada en un mandato que no sea el primero\n";
-                            strcpy(buff, salida);
-                            fputs(buff, stderr);
-                            exit(1);
-                        }
+
 
                         for(int c = 0; c < line->ncommands-1; c++){
                             if(c != i && c != i-1){
@@ -296,13 +277,7 @@ int main(void) {
                     }
 
                     if(i == line->ncommands-1){
-                        if (line->redirect_input != NULL) {
-                            char buff[1024];
-                            char *salida = "No se puede hacer redireccion de entrada en un mandato que no sea el primero\n";
-                            strcpy(buff, salida);
-                            fputs(buff, stderr);
-                            exit(1);
-                        }
+
                         if (line->redirect_output != NULL) {
                             printf("redireccion de salida: %s\n", line->redirect_output);
                             close(fd[0]);
