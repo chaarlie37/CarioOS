@@ -33,6 +33,7 @@ int main(void) {
 	int status;
 	char *dir;
 	char *salida;
+	char buff[1024];
 
     typedef struct{
         char nombre[1024];
@@ -178,7 +179,7 @@ int main(void) {
                     printf("redireccion de salida: %s\n", line->redirect_output);
                     close(fd[0]);
                     close(STDOUT_FILENO);
-                    p_h = open(line->redirect_output, O_WRONLY);
+					p_h = open(line->redirect_output, O_WRONLY | O_CREAT | O_TRUNC, 0600);
                     dup2(p_h, 1);
                     close(fd[1]);
                 }
@@ -189,7 +190,7 @@ int main(void) {
                     printf("redireccion de error: %s\n", line->redirect_error);
                     close(fd[0]);
                     close(STDERR_FILENO);
-                    p_h = open(line->redirect_error, O_WRONLY);
+                    p_h = open(line->redirect_error, O_WRONLY | O_CREAT | O_TRUNC, 0600);
                     dup2(p_h, fd[1]);
                     close(fd[1]);
                 }
@@ -209,7 +210,7 @@ int main(void) {
 					signal(SIGINT, SIG_IGN);
 					signal(SIGQUIT, SIG_IGN);
                     if(execvp(line->commands[0].argv[0], line->commands[0].argv) < 0){
-						char buff[1024];
+
 						salida = line->commands[0].argv[0];
 						strcat(salida, ": No se ha encontrado el mandato.\n");
                         strcpy(buff, salida);
@@ -233,7 +234,7 @@ int main(void) {
 					signal(SIGQUIT, SIG_DFL);
 
                     if(execvp(line->commands[0].argv[0], line->commands[0].argv)< 0){
-                        char buff[1024];
+
 						salida = line->commands[0].argv[0];
 						strcat(salida, ": No se ha encontrado el mandato.\n");
                         strcpy(buff, salida);
@@ -307,7 +308,7 @@ int main(void) {
                             printf("redireccion de salida: %s\n", line->redirect_output);
                             close(fd[0]);
                             close(STDOUT_FILENO);
-                            p_h = open(line->redirect_output, O_WRONLY);
+                            p_h = open(line->redirect_output, O_WRONLY | O_CREAT | O_TRUNC, 0600);
                             dup2(p_h, fd[1]);
                             close(fd[1]);
                         }
@@ -315,7 +316,7 @@ int main(void) {
                             printf("redireccion de error: %s\n", line->redirect_error);
                             close(fd[0]);
                             close(STDERR_FILENO);
-                            p_h = open(line->redirect_error, O_WRONLY);
+                            p_h = open(line->redirect_error, O_WRONLY | O_CREAT | O_TRUNC, 0600);
                             dup2(p_h, fd[1]);
                             close(fd[1]);
                         }
@@ -334,7 +335,7 @@ int main(void) {
 
 
                     if (execv(line->commands[i].filename, line->commands[i].argv) < 0){
-						char buff[1024];
+
 						salida = line->commands[i].argv[0];
 						strcat(salida, ": No se ha encontrado el mandato.\n");
                         strcpy(buff, salida);
