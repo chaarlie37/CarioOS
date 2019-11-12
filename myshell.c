@@ -109,6 +109,10 @@ int main(void) {
           continue;
         }
 
+		if(line->ncommands == 1 && strcmp(line->commands[0].argv[0],"exit")==0){
+			break;
+		}
+
 		if(line->ncommands == 1 && strcmp(line->commands[0].argv[0],"jobs")==0){
 			for(int a = 0; a<contadorProcesosBackground; a++){
 				if(procesosBackground[a].status == 0){
@@ -156,13 +160,7 @@ int main(void) {
 				  fprintf(stderr, "Error: %s\n", strerror(errno));
 				}
 			}
-<<<<<<< HEAD
-=======
 
-
-
-
->>>>>>> 6085559d99bdcb0a03063473bfd1ab370e574a9e
     	}else if(line->ncommands == 1){//Caso de que solo haya un mandato
             pipe(fd);
             pid = fork();
