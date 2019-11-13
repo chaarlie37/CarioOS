@@ -38,8 +38,10 @@ int main(void) {
 	char salidaCd[1024];
 	char salidaJobs[1024];
 	char buff[1024];
-	int * pids_bg;
 	int error_bg;
+	int a;
+	int b;
+	int c;
 
     typedef struct{
         char nombre[1024];
@@ -90,9 +92,9 @@ int main(void) {
 			break;
 		}
 
-		for(int a = 0; a<contadorProcesosBackground; a++){
+		for( a = 0; a<contadorProcesosBackground; a++){
 			if(procesosBackground[a]->status == 0){
-				int b = 0;
+				b = 0;
 				error_bg = 0;
 				while(b<procesosBackground[a]->n_mandatos && error_bg == 0){
 					//printf("Proceso %d\n", procesosBackground[a]->pids[b]);
@@ -104,7 +106,7 @@ int main(void) {
 								//printf("C\n");
 								error_bg = 1;	// true
 								procesosBackground[a]->status = -1;
-								for(int c = a; c<contadorProcesosBackground-1; c++){
+								for( c = a; c<contadorProcesosBackground-1; c++){
 									procesosBackground[c] = procesosBackground[c+1];
 								}
 								free(procesosBackground[contadorProcesosBackground-1]);
@@ -118,7 +120,7 @@ int main(void) {
 							//printf("D\n");
 							error_bg = 1;	// true
 							procesosBackground[a]->status = -1;
-							for(int c = a; c<contadorProcesosBackground-1; c++){
+							for( c = a; c<contadorProcesosBackground-1; c++){
 								procesosBackground[c] = procesosBackground[c+1];
 							}
 							free(procesosBackground[contadorProcesosBackground-1]);
@@ -128,7 +130,7 @@ int main(void) {
 					}
 					b++;
 				}
-				for(int c = 0; c<procesosBackground[a]->n_mandatos; c++){
+				for( c = 0; c<procesosBackground[a]->n_mandatos; c++){
 					waitpid(procesosBackground[a]->pids[c], NULL, WNOHANG);
 				}
 			}
@@ -176,7 +178,7 @@ int main(void) {
 
 						char auxbuf[2048];
 						strcpy(buffJobs, "");
-						for(int a = 0; a<contadorProcesosBackground; a++){
+						for( a = 0; a<contadorProcesosBackground; a++){
 							if(procesosBackground[a]->status == 0){
 								sprintf(auxbuf, "[%d]+   Running    %s", procesosBackground[a]->n, procesosBackground[a]->nombre);
 								strcat(buffJobs, auxbuf);
@@ -193,7 +195,7 @@ int main(void) {
 				}
 
             }else{
-				for(int a = 0; a<contadorProcesosBackground; a++){
+				for( a = 0; a<contadorProcesosBackground; a++){
 					if(procesosBackground[a]->status == 0){
 						printf("[%d]+   Running    %s", procesosBackground[a]->n, procesosBackground[a]->nombre);
 					}else if(procesosBackground[a]->status == 1){
@@ -215,7 +217,7 @@ int main(void) {
 			if(!(line->commands[0].argv[1] == NULL)){
 				int procesoBg = atoi(line->commands[0].argv[1]);
 				if(procesoBg > 0 && procesoBg <= contadorProcesosBackground){
-					for(int a = 0; a<procesosBackground[procesoBg-1]->n_mandatos; a++){
+					for( a = 0; a<procesosBackground[procesoBg-1]->n_mandatos; a++){
 						printf("PID: %i\n", procesosBackground[procesoBg-1]->pids[a]);
 						waitpid(procesosBackground[procesoBg-1]->pids[a], NULL, 0);
 					}
@@ -224,7 +226,7 @@ int main(void) {
 					printf("myshell: fg: %d: no existe ese trabajo\n", procesoBg);
 				}
 			}else{
-				for(int a = 0; a<procesosBackground[contadorProcesosBackground-1]->n_mandatos; a++){
+				for( a = 0; a<procesosBackground[contadorProcesosBackground-1]->n_mandatos; a++){
 					waitpid(procesosBackground[contadorProcesosBackground-1]->pids[a], NULL, 0);
 				}
 				procesosBackground[contadorProcesosBackground-1]->status = 1;
@@ -434,7 +436,7 @@ int main(void) {
                         }
 
 
-                        for(int c = 1; c < line->ncommands-1; c++){
+                        for( c = 1; c < line->ncommands-1; c++){
                             close(pipes[c][0]);
                             close(pipes[c][1]);
                         }
@@ -447,7 +449,7 @@ int main(void) {
                     if (i > 0 && i < line->ncommands-1){
 
 
-                        for(int c = 0; c < line->ncommands-1; c++){
+                        for(c = 0; c < line->ncommands-1; c++){
                             if(c != i && c != i-1){
                                 close(pipes[c][0]);
                                 close(pipes[c][1]);
@@ -503,7 +505,7 @@ int main(void) {
                             close(fd[1]);
                         }
 
-                        for(int c = 0; c<line->ncommands-2; c++){
+                        for( c = 0; c<line->ncommands-2; c++){
                             close(pipes[c][0]);
                             close(pipes[c][1]);
                         }
@@ -530,6 +532,8 @@ int main(void) {
             } //for
 
 			if(line->background){
+				signal(SIGINT, SIG_IGN);
+				signal(SIGQUIT, SIG_IGN);
 				if(contadorProcesosBackground == 0){
 					//pids_bg = (int *) malloc(line->ncommands * sizeof(int));
 					procesoBackground = (tProcesoBackground *) malloc(line->ncommands * sizeof(int) + sizeof(tProcesoBackground));
@@ -550,17 +554,17 @@ int main(void) {
 				procesosBackground[contadorProcesosBackground-1]->status = 0;
 				procesosBackground[contadorProcesosBackground-1]->n_mandatos = line->ncommands;
 				procesosBackground[contadorProcesosBackground-1]->pids = (int *) malloc(line->ncommands * sizeof(int));
-				for(int a = 0; a<line->ncommands; a++){
+				for( a = 0; a<line->ncommands; a++){
 					procesosBackground[contadorProcesosBackground-1]->pids[a] = hijos[a];
 				}
-				for(int a = 0; a<line->ncommands-1; a++){
+				for( a = 0; a<line->ncommands-1; a++){
 	                close(pipes[a][1]);
 	                close(pipes[a][0]);
 	            }
 				printf("[%d] %d\n", contadorProcesosBackground , procesosBackground[contadorProcesosBackground-1]->pids[line->ncommands-1]);
 				sleep(1);
 			}else{
-				for(int a = 0; a<line->ncommands-1; a++){
+				for( a = 0; a<line->ncommands-1; a++){
 	                close(pipes[a][1]);
 	                close(pipes[a][0]);
 	            }
