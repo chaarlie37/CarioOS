@@ -34,12 +34,15 @@ int main(void) {
 	char *dir;
 	char *salida;
 	char buff[1024];
+	int * pids_bg;
+	int error_bg;
 
     typedef struct{
         char nombre[1024];
         int n;
-        int pid;
 		int status;  // 0 Running, 1 Done
+		int n_mandatos;
+		int * pids;
     } tProcesoBackground;
 
     //tProcesoBackground procesosBackground[10]; // hay que hacerlo dinamico tb
@@ -85,23 +88,58 @@ int main(void) {
 
 		for(int a = 0; a<contadorProcesosBackground; a++){
 			if(procesosBackground[a]->status == 0){
-				if(waitpid(procesosBackground[a]->pid, &status, WNOHANG) != 0){
+				int b = 0;
+				error_bg = 0;
+				while(b<procesosBackground[a]->n_mandatos && error_bg == 0){
+					if(waitpid(procesosBackground[a]->pids[b], &status, WNOHANG) != 0){
+						if(WIFEXITED(status) != 0){
+							if(WEXITSTATUS(status) != 0){
+								error_bg = 1;	// true
+								procesosBackground[a]->status = -1;
+								for(int c = a; c<contadorProcesosBackground-1; c++){
+									procesosBackground[c] = procesosBackground[c+1];
+								}
+								free(procesosBackground[contadorProcesosBackground-1]);
+								if(contadorProcesosBackground>0)
+									contadorProcesosBackground--;
+							}else{
+								procesosBackground[a]->status = 1;
+							}
+						}
+					}
+					b++;
+				}
+				for(int c = 0; c<procesosBackground[a]->n_mandatos; c++){
+					waitpid(procesosBackground[a]->pids[c], NULL, WNOHANG);
+				}
+			}
+
+			/*
+			if(procesosBackground[a]->status == 0){
+				for(int b = 0; b<procesosBackground[a]->n_mandatos; b++){
+					if(waitpid(procesosBackground[a]->pids[b], &status, WNOHANG) != 0){
+						if(WIFEXITED(status) != 0){
+							if(WEXITSTATUS(status) != 0){
+								procesosBackground[a]->status = -1;
+							}
+						}
+					}
+				}
+				if(waitpid(procesosBackground[a]->pids[procesosBackground[a]->n_mandatos-1], &status, WNOHANG) != 0){
 					if(WIFEXITED(status) != 0){
-						procesosBackground[a]->status = 1;
 						if(WEXITSTATUS(status) != 0){
-							procesosBackground[a]->pid = -1;
-							strcpy(procesosBackground[a]->nombre, "");
-							procesosBackground[a]->n = -1;
 							procesosBackground[a]->status = -1;
 							free(procesosBackground[a]);
 							if(contadorProcesosBackground>0)
 								contadorProcesosBackground--;
+						}else{
+							procesosBackground[a]->status = 1;
 						}
 					}
 				}
 			}
+			*/
 		}
-
 
 
 		if(line->ncommands == 1 && strcmp(line->commands[0].argv[0],"jobs")==0){
@@ -119,17 +157,22 @@ int main(void) {
 			continue;
 		}
 
+
 		if(line->ncommands == 1 && strcmp(line->commands[0].argv[0],"fg")==0){
 			if(!(line->commands[0].argv[1] == NULL)){
 				int procesoBg = atoi(line->commands[0].argv[1]);
 				if(!(procesoBg < 1 || procesoBg > contadorProcesosBackground)){
-					waitpid(procesosBackground[procesoBg-1]->pid, NULL, 0);
+					for(int a = 0; a<procesosBackground[procesoBg-1]->n_mandatos; a++){
+						waitpid(procesosBackground[procesoBg-1]->pids[a], NULL, 0);
+					}
 					procesosBackground[contadorProcesosBackground]->status = 1;
 				}else{
 					printf("myshell: fg: %d: no existe ese trabajo\n", procesoBg);
 				}
 			}else{
-				waitpid(procesosBackground[contadorProcesosBackground-1]->pid, NULL, 0);
+				for(int a = 0; a<procesosBackground[contadorProcesosBackground-1]->n_mandatos; a++){
+					waitpid(procesosBackground[contadorProcesosBackground-1]->pids[a], NULL, 0);
+				}
 				procesosBackground[contadorProcesosBackground-1]->status = 1;
 			}
 			printf("msh> ");
@@ -240,27 +283,18 @@ int main(void) {
 					procesosBackground = (tProcesoBackground **) malloc(sizeof(tProcesoBackground*));
 				}
 				else{
-					procesoBackground = (tProcesoBackground *) malloc(sizeof(tProcesoBackground));
-					//tProcesoBackground **tmp = (tProcesoBackground **) realloc(procesosBackground, (contadorProcesosBackground+1) * (sizeof(tProcesoBackground*) + sizeof(tProcesoBackground)));
+					procesoBackground = (tProcesoBackground *) malloc(line->ncommands * sizeof(int) + sizeof(tProcesoBackground));
 					tProcesoBackground **tmp = (tProcesoBackground **) realloc(procesosBackground, (contadorProcesosBackground+1) * sizeof(tProcesoBackground*));
 					procesosBackground = tmp;
 
 				}
 				procesosBackground[contadorProcesosBackground] = procesoBackground;
-				char buff[1024];
-				strcpy(buff, "");
-				for(int a = 0; a < line->commands[0].argc; a++){
-					strcat(buff, line->commands[0].argv[a]);
-					strcat(buff, " ");
-				}
-				strcat(buff, " &");
                 if(pid < 0){
                     fprintf(stderr, "Error en la creacion del proceso hijo.\n");
                 }else if(pid == 0){
 					signal(SIGINT, SIG_IGN);
 					signal(SIGQUIT, SIG_IGN);
                     if(execvp(line->commands[0].argv[0], line->commands[0].argv) < 0){
-
 						salida = line->commands[0].argv[0];
 						strcat(salida, ": No se ha encontrado el mandato.\n");
                         strcpy(buff, salida);
@@ -269,11 +303,13 @@ int main(void) {
                     }
                 }else{
 					contadorProcesosBackground++;
-					procesosBackground[contadorProcesosBackground-1]->pid = pid;
-					strcpy(procesosBackground[contadorProcesosBackground-1]->nombre, buff);
+					procesosBackground[contadorProcesosBackground-1]->pids = (int *) malloc(sizeof(int));
+					procesosBackground[contadorProcesosBackground-1]->pids[0] = pid;
+					strcpy(procesosBackground[contadorProcesosBackground-1]->nombre, buf);
 					procesosBackground[contadorProcesosBackground-1]->n = contadorProcesosBackground;
 					procesosBackground[contadorProcesosBackground-1]->status = 0;
-                    printf("[%d] %d\n", contadorProcesosBackground , procesosBackground[contadorProcesosBackground-1]->pid);
+					procesosBackground[contadorProcesosBackground-1]->n_mandatos = 1;
+                    printf("[%d] %d\n", contadorProcesosBackground , procesosBackground[contadorProcesosBackground-1]->pids[0]);
 					sleep(1);
                 }
             }else{
@@ -421,7 +457,6 @@ int main(void) {
 
 
                     if (execv(line->commands[i].filename, line->commands[i].argv) < 0){
-
 						salida = line->commands[i].argv[0];
 						strcat(salida, ": No se ha encontrado el mandato.\n");
                         strcpy(buff, salida);
@@ -429,20 +464,46 @@ int main(void) {
 						exit(1);
         			}
                 }else{
-                    hijos[i] = pid;
-                }
+						hijos[i] = pid;
+				}
+
+            } //for
+
+			if(line->background){
+				if(contadorProcesosBackground == 0){
+					//pids_bg = (int *) malloc(line->ncommands * sizeof(int));
+					procesoBackground = (tProcesoBackground *) malloc(line->ncommands * sizeof(int) + sizeof(tProcesoBackground));
+					procesosBackground = (tProcesoBackground **) malloc(sizeof(tProcesoBackground*));
+				}
+				else{
+					procesoBackground = (tProcesoBackground *) malloc(line->ncommands * sizeof(int) + sizeof(tProcesoBackground));
+					//tProcesoBackground **tmp = (tProcesoBackground **) realloc(procesosBackground, (contadorProcesosBackground+1) * (sizeof(tProcesoBackground*) + sizeof(tProcesoBackground)));
+					tProcesoBackground **tmp = (tProcesoBackground **) realloc(procesosBackground, (contadorProcesosBackground+1) * sizeof(tProcesoBackground*));
+					procesosBackground = tmp;
+
+				}
+				procesosBackground[contadorProcesosBackground] = procesoBackground;
+				contadorProcesosBackground++;
+				strcpy(procesosBackground[contadorProcesosBackground-1]->nombre, buf);
+				procesosBackground[contadorProcesosBackground-1]->n = contadorProcesosBackground;
+				procesosBackground[contadorProcesosBackground-1]->status = 0;
+				procesosBackground[contadorProcesosBackground-1]->n_mandatos = line->ncommands;
+				procesosBackground[contadorProcesosBackground-1]->pids = hijos;
+				for(int a = 0; a<line->ncommands-1; a++){
+	                close(pipes[a][1]);
+	                close(pipes[a][0]);
+	            }
+				printf("[%d] %d\n", contadorProcesosBackground , procesosBackground[contadorProcesosBackground-1]->pids[line->ncommands-1]);
+				sleep(1);
+			}else{
+				for(int a = 0; a<line->ncommands-1; a++){
+	                close(pipes[a][1]);
+	                close(pipes[a][0]);
+	            }
+				for(int k = 0; k<line->ncommands; k++){
+	                waitpid(hijos[k], &status, 0);
+	            }
             }
-
-            for(int a = 0; a<line->ncommands-1; a++){
-                close(pipes[a][1]);
-                close(pipes[a][0]);
-            }
-
-            for(int k = 0; k<line->ncommands; k++){
-                waitpid(hijos[k], &status, 0);
-
-            }
-
             free(pipes);
             free(hijos);
         }
