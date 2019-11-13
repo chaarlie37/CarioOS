@@ -21,11 +21,13 @@ int main(void) {
 
 	char buf[1024];
 	char buf2[1024];
+	char buffJobs[2048];
 	tline * line;
 	int i;
 	int pid;
 	int fd[2];
 	FILE *archivo;
+	int jobsFile;
 	int fichero;
 	int p_h;
 	int *hijos;
@@ -34,6 +36,7 @@ int main(void) {
 	char *dir;
 	char *salida;
 	char salidaCd[1024];
+	char salidaJobs[1024];
 	char buff[1024];
 	int * pids_bg;
 	int error_bg;
@@ -159,16 +162,50 @@ int main(void) {
 
 
 		if(line->ncommands == 1 && strcmp(line->commands[0].argv[0],"jobs")==0){
-			for(int a = 0; a<contadorProcesosBackground; a++){
-				if(procesosBackground[a]->status == 0){
-					printf("[%d]+   Running    %s", procesosBackground[a]->n, procesosBackground[a]->nombre);
-				}else if(procesosBackground[a]->status == 1){
-					printf("[%d]+   Done       %s", procesosBackground[a]->n, procesosBackground[a]->nombre);
-					//AQUI SE ELIMINARIA DE LA LISTA EN DINAMICO, PONGO STATUS A -1 PARA QUE NO SALGA EN OTRO JOBS
-					procesosBackground[a]->status = -1;
-					free(procesosBackground[a]);
+			if (line->redirect_output != NULL) {
+                printf("redireccion de salida: %s\n", line->redirect_output);
+				if(open(line->redirect_output, O_WRONLY | O_CREAT | O_TRUNC, 0600) < 0){
+					salida = line->redirect_output;
+					strcat(salidaJobs, ": Error.");
+					strcat(salidaJobs, strerror(errno));
+					strcat(salidaJobs, "\n");
+                    strcpy(buff, salidaJobs);
+                    fputs(buff, stderr);
+					//continue;
+				}else{
+
+						char auxbuf[2048];
+						strcpy(buffJobs, "");
+						for(int a = 0; a<contadorProcesosBackground; a++){
+							if(procesosBackground[a]->status == 0){
+								sprintf(auxbuf, "[%d]+   Running    %s", procesosBackground[a]->n, procesosBackground[a]->nombre);
+								strcat(buffJobs, auxbuf);
+							}else if(procesosBackground[a]->status == 1){
+								sprintf(auxbuf,"[%d]+   Done       %s", procesosBackground[a]->n, procesosBackground[a]->nombre);
+								strcat(buffJobs, auxbuf);
+								//AQUI SE ELIMINARIA DE LA LISTA EN DINAMICO, PONGO STATUS A -1 PARA QUE NO SALGA EN OTRO JOBS
+								procesosBackground[a]->status = -1;
+								free(procesosBackground[a]);
+							}
+						}
+						jobsFile = open(line->redirect_output, O_WRONLY | O_CREAT | O_TRUNC, 0600);
+						write(jobsFile, buffJobs, 2048);
+				}
+
+            }else{
+				for(int a = 0; a<contadorProcesosBackground; a++){
+					if(procesosBackground[a]->status == 0){
+						printf("[%d]+   Running    %s", procesosBackground[a]->n, procesosBackground[a]->nombre);
+					}else if(procesosBackground[a]->status == 1){
+						printf("[%d]+   Done       %s", procesosBackground[a]->n, procesosBackground[a]->nombre);
+						//AQUI SE ELIMINARIA DE LA LISTA EN DINAMICO, PONGO STATUS A -1 PARA QUE NO SALGA EN OTRO JOBS
+						procesosBackground[a]->status = -1;
+						free(procesosBackground[a]);
+					}
 				}
 			}
+
+
 			printf("msh> ");
 			continue;
 		}
@@ -318,8 +355,8 @@ int main(void) {
                 if(pid < 0){
                     fprintf(stderr, "Error en la creacion del proceso hijo.\n");
                 }else if(pid == 0){
-					signal(SIGINT, SIG_IGN);
-					signal(SIGQUIT, SIG_IGN);
+					//signal(SIGINT, SIG_DFL);
+					//signal(SIGQUIT, SIG_DFL);
                     if(execvp(line->commands[0].argv[0], line->commands[0].argv) < 0){
 						salida = line->commands[0].argv[0];
 						strcat(salida, ": No se ha encontrado el mandato.\n");
