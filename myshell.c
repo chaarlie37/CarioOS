@@ -33,6 +33,7 @@ int main(void) {
 	int status;
 	char *dir;
 	char *salida;
+	char salidaCd[1024];
 	char buff[1024];
 	int * pids_bg;
 	int error_bg;
@@ -182,12 +183,21 @@ int main(void) {
     	if(line->ncommands == 1 && strcmp(line->commands[0].argv[0],"cd")==0){
 			if (line->redirect_input != NULL){
 				printf("redirección de entrada: %s\n", line->redirect_input);
-				archivo = fopen(line->redirect_input, "r");
-				fscanf(archivo, "%s", buf2);
+				if(open(line->redirect_input, O_RDONLY) < 0){
+					strcpy(salidaCd, line->redirect_input);
+					strcat(salidaCd, ": Error.");
+					strcat(salidaCd, strerror(errno));
+					strcat(salidaCd, "\n");
+					fprintf(stderr,"%s\n", salidaCd);
 
-				if(chdir(buf2) != 0){
-				  fprintf(stderr, "Error: %s\n", strerror(errno));
+				}else{
+					archivo = fopen(line->redirect_input, "r");
+					fscanf(archivo, "%s", buf2);
+					if(chdir(buf2) != 0){
+					  fprintf(stderr, "Error: %s\n", strerror(errno));
+					}
 				}
+
 
 			}else{
 
@@ -204,7 +214,7 @@ int main(void) {
 						fichero = open(line->redirect_error, O_WRONLY);
 						dup2(fichero, 2);
 					}
-				  fprintf(stderr, "Error: %s", strerror(errno));
+				  fprintf(stderr, "Error: %s\n", strerror(errno));
 				}
 			}
 
