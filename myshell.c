@@ -223,9 +223,9 @@ int main(void) {
 
 		// cd
     	if(line->ncommands == 1 && strcmp(line->commands[0].argv[0],"cd")==0){
-			if (line->redirect_input != NULL){
+			if (line->redirect_input != NULL){//caso de que haya una redireccion de entrada
 				printf("redirección de entrada: %s\n", line->redirect_input);
-				if(open(line->redirect_input, O_RDONLY) < 0){
+				if(open(line->redirect_input, O_RDONLY) < 0){//se comprueba que no haya errores al abrir el fichero
 					strcpy(salidaCd, line->redirect_input);
 					strcat(salidaCd, ": Error.");
 					strcat(salidaCd, strerror(errno));
@@ -235,7 +235,7 @@ int main(void) {
 				}else{
 					archivo = fopen(line->redirect_input, "r");
 					fscanf(archivo, "%s", buf2);
-					if(chdir(buf2) != 0){
+					if(chdir(buf2) != 0){//se ejecuta el mandato cd usando el contenido del fichero
 					  fprintf(stderr, "Error: %s\n", strerror(errno));
 					}
 				}
@@ -244,17 +244,30 @@ int main(void) {
 			}else{
 
 
-				if(line->commands[0].argc == 2){
+				if(line->commands[0].argc == 2){//si se le introduce una ruta a la que ir
 					dir = line->commands[0].argv[1];
 
 				}else{
-
+					//si no se introduce una ruta a la que ir, el mandato hace un cambio de directorio al contenido de la variable HOME
 					dir = getenv("HOME");
 				}
-				if(chdir(dir) != 0){
-					if(line->redirect_error != NULL){
-						fichero = open(line->redirect_error, O_WRONLY);
-						dup2(fichero, 2);
+				if(chdir(dir) != 0){//se ejecuta el mandato con el contenido de la variable dir
+					if(line->redirect_error != NULL){//casod de que haya una redireccion de la salida estandar de error
+						if(open(line->redirect_error, O_WRONLY | O_CREAT | O_TRUNC, 0600) < 0){//comprobante de que haya algún fallo a la hora de abrir el fichero
+							//En caso de que haya algun problema se contruye un mensaje de error
+							printf("redireccion de error: %s\n", line->redirect_error);
+							salida = line->redirect_error;
+							strcat(salida, ": Error.");
+							strcat(salida, strerror(errno));
+							strcat(salida, "\n");
+	                        strcpy(buff, salida);
+	                        fputs(buff, stderr);
+							exit(1);
+						}else{
+							fichero = open(line->redirect_error, O_WRONLY | O_CREAT | O_TRUNC, 0600);
+							dup2(fichero, 2);
+						}
+
 					}
 				  fprintf(stderr, "Error: %s\n", strerror(errno));
 				}
@@ -263,34 +276,37 @@ int main(void) {
     	}else if(line->ncommands == 1){			//Caso de que solo haya un mandato
             pipe(fd);	// pipe para redirecciones
             pid = fork();
-            if (line->redirect_input != NULL) {
-                if(pid == 0){
+            if (line->redirect_input != NULL) {//caso de que haya una redireccion de entrada
+                if(pid == 0){//el hijo
                     printf("redirección de entrada: %s\n", line->redirect_input);
                     close(fd[1]);
-                    close(STDIN_FILENO);
-					if(open(line->redirect_input, O_RDONLY) < 0){
+                    close(STDIN_FILENO);//se cierra la entrada estandar
+					if(open(line->redirect_input, O_RDONLY) < 0){//comprobacion de fallo a la hora de abrir el fichero
+						//en caso de que de algún problema se construye el mensaje de error
 						salida = line->redirect_input;
 						strcat(salida, ": Error.");
 						strcat(salida, strerror(errno));
 						strcat(salida, "\n");
                         strcpy(buff, salida);
-                        fputs(buff, stderr);
+                        fputs(buff, stderr);//se pone el mensaje de error en la salida estandar de error
 						exit(1);
 					}else{
-						p_h = open(line->redirect_input, O_RDONLY);
+						//en caso de que se abra el fichero de forma correcta
+						p_h = open(line->redirect_input, O_RDONLY);//se abre el fichero y se guarda el descriptor en la variable p_h
 					}
 
-                    dup2(p_h, fd[0]);
+                    dup2(p_h, fd[0]);//se sustituye la entrada estandar por el contenido del fichero
                     close(fd[0]);
                 }
             }
 
-          	if (line->redirect_output != NULL) {
-                if(pid == 0){
+          	if (line->redirect_output != NULL) {//caso de que haya redireccion de salida
+                if(pid == 0){//el hijo
                     printf("redireccion de salida: %s\n", line->redirect_output);
                     close(fd[0]);
-                    close(STDOUT_FILENO);
-					if(open(line->redirect_output, O_WRONLY | O_CREAT | O_TRUNC, 0600) < 0){
+                    close(STDOUT_FILENO);//se cierra la salida estandar
+					if(open(line->redirect_output, O_WRONLY | O_CREAT | O_TRUNC, 0600) < 0){//comprobante de que haya algún fallo a la hora de abrir el fichero
+						//En caso de que haya algun problema se contruye un mensaje de error
 						salida = line->redirect_output;
 						strcat(salida, ": Error.");
 						strcat(salida, strerror(errno));
@@ -299,19 +315,21 @@ int main(void) {
                         fputs(buff, stderr);
 						exit(1);
 					}else{
-							p_h = open(line->redirect_output, O_WRONLY | O_CREAT | O_TRUNC, 0600);
+						//si se ha podido abrir correctamente
+						p_h = open(line->redirect_output, O_WRONLY | O_CREAT | O_TRUNC, 0600);
 					}
-                    dup2(p_h, 1);
+                    dup2(p_h, 1);//se sustituye la salida estandar por el fichero
                     close(fd[1]);
                 }
             }
 
-            if (line->redirect_error != NULL) {
-                if(pid == 0){
+            if (line->redirect_error != NULL) {//caso de que haya redireccion de salida de error
+                if(pid == 0){//el hijo
                     printf("redireccion de error: %s\n", line->redirect_error);
                     close(fd[0]);
-                    close(STDERR_FILENO);
-                    if(open(line->redirect_error, O_WRONLY | O_CREAT | O_TRUNC, 0600) < 0){
+                    close(STDERR_FILENO);//se cierra la salida estandar de error
+                    if(open(line->redirect_error, O_WRONLY | O_CREAT | O_TRUNC, 0600) < 0){//comprobante de que haya algún fallo a la hora de abrir el fichero
+						//En caso de que haya algun problema se contruye un mensaje de error
 						salida = line->redirect_error;
 						strcat(salida, ": Error.");
 						strcat(salida, strerror(errno));
@@ -320,9 +338,10 @@ int main(void) {
                         fputs(buff, stderr);
 						exit(1);
 					}else{
+						//si se ha podido abrir correctamente
 						p_h = open(line->redirect_error, O_WRONLY | O_CREAT | O_TRUNC, 0600);
 					}
-                    dup2(p_h, fd[1]);
+                    dup2(p_h, fd[1]);//se sustituye la salida de error por el fichero
                     close(fd[1]);
                 }
             }
@@ -362,28 +381,30 @@ int main(void) {
             }else{
                 if(pid < 0){
                     fprintf(stderr, "Error en la creacion del proceso hijo.\n");
-                }else if(pid == 0){
+                }else if(pid == 0){//el hijo
+					//se hace que vuelva a escuchar las señales que la shell tiene que ignorar (ctrl+c y ctrl+\)
 					signal(SIGINT, SIG_DFL);
 					signal(SIGQUIT, SIG_DFL);
-                    if(execvp(line->commands[0].argv[0], line->commands[0].argv)< 0){
+                    if(execvp(line->commands[0].argv[0], line->commands[0].argv)< 0){//ejecución del mandato y comprobante de que todo vaya correctamente
 						fprintf(stderr, "%s: No se ha encontrado el mandato.\n", line->commands[0].argv[0]);
 						exit(1);
                     }
                 }else{
+					//el padre espera a que el hijo termine
                     waitpid(pid, &status, 0);
                 }
             }
 
         }else if(line->ncommands >= 2){			//Caso de que haya mas de un mandato
-            hijos = malloc(line->ncommands * sizeof(int));
-            pipes = (int **) malloc((line->ncommands-1) * sizeof(int *));
+            hijos = malloc(line->ncommands * sizeof(int));//se reserva memoria para los pid de los hijos
+            pipes = (int **) malloc((line->ncommands-1) * sizeof(int *)); //se reserva memoria para los pipes necesarios
             for (i=0; i<line->ncommands-1; i++){
-                pipes[i] = (int *) malloc (2*sizeof(int));
-                if(pipe(pipes[i]) < 0){
+                pipes[i] = (int *) malloc (2*sizeof(int));//se reserva memoria dentro de cada uno de los pipes para lectura y escritura
+                if(pipe(pipes[i]) < 0){//se abre cada uno de los pipes comprobando si hay fallos
     				fprintf(stderr, "Error al crear el pipe %d.\n", i);
     			}
             }
-            pipe(fd);
+            pipe(fd);//pipe para redirecciones
             for (i=0; i<line->ncommands; i++) {
                 pid = fork();
                 if(pid < 0){
@@ -391,7 +412,7 @@ int main(void) {
                 }else if (pid == 0){
 					// si es el primer mandato
                     if(i == 0){
-                        if (line->redirect_input != NULL) {
+                        if (line->redirect_input != NULL) {//caso de que haya una redireccion de entrada
                             printf("redirección de entrada: %s\n", line->redirect_input);
                             close(fd[1]);
                             close(STDIN_FILENO);
@@ -446,7 +467,7 @@ int main(void) {
 					// si es el último mandato
                     if(i == line->ncommands-1){
 
-                        if (line->redirect_output != NULL) {
+                        if (line->redirect_output != NULL) {//caso de que haya redireccion de salida
                             printf("redireccion de salida: %s\n", line->redirect_output);
                             close(fd[0]);
                             close(STDOUT_FILENO);
@@ -465,7 +486,7 @@ int main(void) {
                             dup2(p_h, fd[1]);
                             close(fd[1]);
                         }
-                        if (line->redirect_error != NULL) {
+                        if (line->redirect_error != NULL) {//caso de que haya redireccion de salida de error
                             printf("redireccion de error: %s\n", line->redirect_error);
                             close(fd[0]);
                             close(STDERR_FILENO);
@@ -512,6 +533,7 @@ int main(void) {
             } //for
 
 			if(line->background){
+				//se hace que los procesos en background ignoren las señales (ctrl+c y ctrl+\)
 				signal(SIGINT, SIG_IGN);
 				signal(SIGQUIT, SIG_IGN);
 				// reserva de memoria para almacenar los procesos en background
