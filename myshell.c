@@ -92,9 +92,13 @@ int main(void) {
 				int b = 0;
 				error_bg = 0;
 				while(b<procesosBackground[a]->n_mandatos && error_bg == 0){
+					//printf("Proceso %d\n", procesosBackground[a]->pids[b]);
 					if(waitpid(procesosBackground[a]->pids[b], &status, WNOHANG) != 0){
+						//printf("A\n");
 						if(WIFEXITED(status) != 0){
-							if(WEXITSTATUS(status) != 0){
+							//printf("B\n");
+							if(WEXITSTATUS(status) != 0){	// para mandatos que salgan con error o no existan
+								//printf("C\n");
 								error_bg = 1;	// true
 								procesosBackground[a]->status = -1;
 								for(int c = a; c<contadorProcesosBackground-1; c++){
@@ -104,8 +108,19 @@ int main(void) {
 								if(contadorProcesosBackground>0)
 									contadorProcesosBackground--;
 							}else{
-								procesosBackground[a]->status = 1;
+								if(b == procesosBackground[a]->n_mandatos - 1)
+									procesosBackground[a]->status = 1;
 							}
+						}else{	// para mandatos que no han sido encontrados
+							//printf("D\n");
+							error_bg = 1;	// true
+							procesosBackground[a]->status = -1;
+							for(int c = a; c<contadorProcesosBackground-1; c++){
+								procesosBackground[c] = procesosBackground[c+1];
+							}
+							free(procesosBackground[contadorProcesosBackground-1]);
+							if(contadorProcesosBackground>0)
+								contadorProcesosBackground--;
 						}
 					}
 					b++;
@@ -118,7 +133,7 @@ int main(void) {
 			/*
 			if(procesosBackground[a]->status == 0){
 				for(int b = 0; b<procesosBackground[a]->n_mandatos; b++){
-					if(waitpid(procesosBackground[a]->pids[b], &status, WNOHANG) != 0){
+					if(waitpid(procprintf("Proceso %d\n", procesosBackground[a]->pids[b]);esosBackground[a]->pids[b], &status, WNOHANG) != 0){
 						if(WIFEXITED(status) != 0){
 							if(WEXITSTATUS(status) != 0){
 								procesosBackground[a]->status = -1;
@@ -146,9 +161,9 @@ int main(void) {
 		if(line->ncommands == 1 && strcmp(line->commands[0].argv[0],"jobs")==0){
 			for(int a = 0; a<contadorProcesosBackground; a++){
 				if(procesosBackground[a]->status == 0){
-					printf("[%d]+   Running    %s\n", procesosBackground[a]->n, procesosBackground[a]->nombre);
+					printf("[%d]+   Running    %s", procesosBackground[a]->n, procesosBackground[a]->nombre);
 				}else if(procesosBackground[a]->status == 1){
-					printf("[%d]+   Done       %s\n", procesosBackground[a]->n, procesosBackground[a]->nombre);
+					printf("[%d]+   Done       %s", procesosBackground[a]->n, procesosBackground[a]->nombre);
 					//AQUI SE ELIMINARIA DE LA LISTA EN DINAMICO, PONGO STATUS A -1 PARA QUE NO SALGA EN OTRO JOBS
 					procesosBackground[a]->status = -1;
 					free(procesosBackground[a]);
@@ -162,11 +177,12 @@ int main(void) {
 		if(line->ncommands == 1 && strcmp(line->commands[0].argv[0],"fg")==0){
 			if(!(line->commands[0].argv[1] == NULL)){
 				int procesoBg = atoi(line->commands[0].argv[1]);
-				if(!(procesoBg < 1 || procesoBg > contadorProcesosBackground)){
+				if(procesoBg > 0 && procesoBg <= contadorProcesosBackground){
 					for(int a = 0; a<procesosBackground[procesoBg-1]->n_mandatos; a++){
+						printf("PID: %i\n", procesosBackground[procesoBg-1]->pids[a]);
 						waitpid(procesosBackground[procesoBg-1]->pids[a], NULL, 0);
 					}
-					procesosBackground[contadorProcesosBackground]->status = 1;
+					procesosBackground[procesoBg-1]->status = 1;
 				}else{
 					printf("myshell: fg: %d: no existe ese trabajo\n", procesoBg);
 				}
@@ -355,10 +371,7 @@ int main(void) {
             }
             pipe(fd);
             for (i=0; i<line->ncommands; i++) {
-
                 pid = fork();
-
-
                 if(pid < 0){
                     fprintf(stderr, "Error al crear el hijo\n");
                 }else if (pid == 0){
@@ -486,6 +499,7 @@ int main(void) {
 					procesosBackground = (tProcesoBackground **) malloc(sizeof(tProcesoBackground*));
 				}
 				else{
+					// REVISAR ESTA LINEA
 					procesoBackground = (tProcesoBackground *) malloc(line->ncommands * sizeof(int) + sizeof(tProcesoBackground));
 					//tProcesoBackground **tmp = (tProcesoBackground **) realloc(procesosBackground, (contadorProcesosBackground+1) * (sizeof(tProcesoBackground*) + sizeof(tProcesoBackground)));
 					tProcesoBackground **tmp = (tProcesoBackground **) realloc(procesosBackground, (contadorProcesosBackground+1) * sizeof(tProcesoBackground*));
@@ -498,7 +512,10 @@ int main(void) {
 				procesosBackground[contadorProcesosBackground-1]->n = contadorProcesosBackground;
 				procesosBackground[contadorProcesosBackground-1]->status = 0;
 				procesosBackground[contadorProcesosBackground-1]->n_mandatos = line->ncommands;
-				procesosBackground[contadorProcesosBackground-1]->pids = hijos;
+				procesosBackground[contadorProcesosBackground-1]->pids = (int *) malloc(line->ncommands * sizeof(int));
+				for(int a = 0; a<line->ncommands; a++){
+					procesosBackground[contadorProcesosBackground-1]->pids[a] = hijos[a];
+				}
 				for(int a = 0; a<line->ncommands-1; a++){
 	                close(pipes[a][1]);
 	                close(pipes[a][0]);
