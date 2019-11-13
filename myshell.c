@@ -80,18 +80,20 @@ int main(void) {
 	printf("msh> ");
 	while (fgets(buf, 1024, stdin)) {
 
-
-
         line = tokenize(buf);
 
+		// si la línea es vacía vuelve a esperar otra
 		if (line==NULL) {
 		  continue;
 		}
 
+		// salir de la minishell
 		if(line->ncommands == 1 && strcmp(line->commands[0].argv[0],"exit")==0){
 			break;
 		}
 
+		// comprobación con waitpid(WNOHANG) para comprobar los hijos que hayan muerto en bg y que no se queden zombies,
+		// además de comprobación de errores al haber ejecutado mandatos en bg
 		for( a = 0; a<contadorProcesosBackground; a++){
 			if(procesosBackground[a]->status == 0){
 				b = 0;
@@ -134,35 +136,9 @@ int main(void) {
 					waitpid(procesosBackground[a]->pids[c], NULL, WNOHANG);
 				}
 			}
-
-			/*
-			if(procesosBackground[a]->status == 0){
-				for(int b = 0; b<procesosBackground[a]->n_mandatos; b++){
-					if(waitpid(procprintf("Proceso %d\n", procesosBackground[a]->pids[b]);esosBackground[a]->pids[b], &status, WNOHANG) != 0){
-						if(WIFEXITED(status) != 0){
-							if(WEXITSTATUS(status) != 0){
-								procesosBackground[a]->status = -1;
-							}
-						}
-					}
-				}
-				if(waitpid(procesosBackground[a]->pids[procesosBackground[a]->n_mandatos-1], &status, WNOHANG) != 0){
-					if(WIFEXITED(status) != 0){
-						if(WEXITSTATUS(status) != 0){
-							procesosBackground[a]->status = -1;
-							free(procesosBackground[a]);
-							if(contadorProcesosBackground>0)
-								contadorProcesosBackground--;
-						}else{
-							procesosBackground[a]->status = 1;
-						}
-					}
-				}
-			}
-			*/
 		}
 
-
+		// jobs
 		if(line->ncommands == 1 && strcmp(line->commands[0].argv[0],"jobs")==0){
 			if (line->redirect_output != NULL) {
                 printf("redireccion de salida: %s\n", line->redirect_output);
@@ -185,9 +161,15 @@ int main(void) {
 							}else if(procesosBackground[a]->status == 1){
 								sprintf(auxbuf,"[%d]+   Done       %s", procesosBackground[a]->n, procesosBackground[a]->nombre);
 								strcat(buffJobs, auxbuf);
-								//AQUI SE ELIMINARIA DE LA LISTA EN DINAMICO, PONGO STATUS A -1 PARA QUE NO SALGA EN OTRO JOBS
-								procesosBackground[a]->status = -1;
+
+								//procesosBackground[a]->status = -1;
+								// se libera de memoria dinamica a este proceso ya que se ha indicado
+								for( c = a; c<contadorProcesosBackground-1; c++){
+									procesosBackground[c] = procesosBackground[c+1];
+								}
 								free(procesosBackground[a]);
+								if(contadorProcesosBackground>0)
+									contadorProcesosBackground--;
 							}
 						}
 						jobsFile = open(line->redirect_output, O_WRONLY | O_CREAT | O_TRUNC, 0600);
@@ -212,16 +194,18 @@ int main(void) {
 			continue;
 		}
 
-
+		// fg
 		if(line->ncommands == 1 && strcmp(line->commands[0].argv[0],"fg")==0){
 			if(contadorProcesosBackground > 0){
 				if(!(line->commands[0].argv[1] == NULL)){
 					int procesoBg = atoi(line->commands[0].argv[1]);
 					if(procesoBg > 0 && procesoBg <= contadorProcesosBackground){
 						for( a = 0; a<procesosBackground[procesoBg-1]->n_mandatos; a++){
-							printf("PID: %i\n", procesosBackground[procesoBg-1]->pids[a]);
+							printf("%s\n", procesosBackground[procesoBg-1]->nombre);
 							waitpid(procesosBackground[procesoBg-1]->pids[a], NULL, 0);
 						}
+						// aqui se pone como status al procesoBG en 1 (Done) ya que le hemos esperado en el wait,
+						// por lo que ha terminado
 						procesosBackground[procesoBg-1]->status = 1;
 					}else{
 						printf("myshell: fg: %d: no existe ese trabajo\n", procesoBg);
@@ -232,11 +216,12 @@ int main(void) {
 					}
 					procesosBackground[contadorProcesosBackground-1]->status = 1;
 				}
-			}	
+			}
 			printf("msh> ");
 			continue;
 		}
 
+		// cd
     	if(line->ncommands == 1 && strcmp(line->commands[0].argv[0],"cd")==0){
 			if (line->redirect_input != NULL){
 				printf("redirección de entrada: %s\n", line->redirect_input);
@@ -275,10 +260,9 @@ int main(void) {
 				}
 			}
 
-    	}else if(line->ncommands == 1){//Caso de que solo haya un mandato
-            pipe(fd);
+    	}else if(line->ncommands == 1){			//Caso de que solo haya un mandato
+            pipe(fd);	// pipe para redirecciones
             pid = fork();
-
             if (line->redirect_input != NULL) {
                 if(pid == 0){
                     printf("redirección de entrada: %s\n", line->redirect_input);
@@ -317,7 +301,6 @@ int main(void) {
 					}else{
 							p_h = open(line->redirect_output, O_WRONLY | O_CREAT | O_TRUNC, 0600);
 					}
-
                     dup2(p_h, 1);
                     close(fd[1]);
                 }
@@ -345,6 +328,7 @@ int main(void) {
             }
 
       		if (line->background) {
+				// reserva de memoria para almacenar los procesos en background
 				if(contadorProcesosBackground == 0){
 					procesoBackground = (tProcesoBackground *) malloc(sizeof(tProcesoBackground));
 					procesosBackground = (tProcesoBackground **) malloc(sizeof(tProcesoBackground*));
@@ -353,7 +337,6 @@ int main(void) {
 					procesoBackground = (tProcesoBackground *) malloc(line->ncommands * sizeof(int) + sizeof(tProcesoBackground));
 					tProcesoBackground **tmp = (tProcesoBackground **) realloc(procesosBackground, (contadorProcesosBackground+1) * sizeof(tProcesoBackground*));
 					procesosBackground = tmp;
-
 				}
 				procesosBackground[contadorProcesosBackground] = procesoBackground;
                 if(pid < 0){
@@ -362,21 +345,18 @@ int main(void) {
 					//signal(SIGINT, SIG_DFL);
 					//signal(SIGQUIT, SIG_DFL);
                     if(execvp(line->commands[0].argv[0], line->commands[0].argv) < 0){
-						salida = line->commands[0].argv[0];
-						strcat(salida, ": No se ha encontrado el mandato.\n");
-                        strcpy(buff, salida);
-                        fputs(buff, stderr);
+						fprintf(stderr, "%s: No se ha encontrado el mandato.\n", line->commands[0].argv[0]);
 						exit(1);
                     }
                 }else{
+					procesosBackground[contadorProcesosBackground]->pids = (int *) malloc(sizeof(int));
+					procesosBackground[contadorProcesosBackground]->pids[0] = pid;
+					strcpy(procesosBackground[contadorProcesosBackground]->nombre, buf);
+					procesosBackground[contadorProcesosBackground]->n = contadorProcesosBackground;
+					procesosBackground[contadorProcesosBackground]->status = 0;
+					procesosBackground[contadorProcesosBackground]->n_mandatos = 1;
 					contadorProcesosBackground++;
-					procesosBackground[contadorProcesosBackground-1]->pids = (int *) malloc(sizeof(int));
-					procesosBackground[contadorProcesosBackground-1]->pids[0] = pid;
-					strcpy(procesosBackground[contadorProcesosBackground-1]->nombre, buf);
-					procesosBackground[contadorProcesosBackground-1]->n = contadorProcesosBackground;
-					procesosBackground[contadorProcesosBackground-1]->status = 0;
-					procesosBackground[contadorProcesosBackground-1]->n_mandatos = 1;
-                    printf("[%d] %d\n", contadorProcesosBackground , procesosBackground[contadorProcesosBackground-1]->pids[0]);
+                    fprintf(stdin, "[%d] %d\n", contadorProcesosBackground , procesosBackground[contadorProcesosBackground-1]->pids[0]);
 					sleep(1);
                 }
             }else{
@@ -385,13 +365,8 @@ int main(void) {
                 }else if(pid == 0){
 					signal(SIGINT, SIG_DFL);
 					signal(SIGQUIT, SIG_DFL);
-
                     if(execvp(line->commands[0].argv[0], line->commands[0].argv)< 0){
-
-						salida = line->commands[0].argv[0];
-						strcat(salida, ": No se ha encontrado el mandato.\n");
-                        strcpy(buff, salida);
-                        fputs(buff, stderr);
+						fprintf(stderr, "%s: No se ha encontrado el mandato.\n", line->commands[0].argv[0]);
 						exit(1);
                     }
                 }else{
@@ -399,9 +374,7 @@ int main(void) {
                 }
             }
 
-
-
-        }else if(line->ncommands >= 2){//Caso de que haya mas de un mandato
+        }else if(line->ncommands >= 2){			//Caso de que haya mas de un mandato
             hijos = malloc(line->ncommands * sizeof(int));
             pipes = (int **) malloc((line->ncommands-1) * sizeof(int *));
             for (i=0; i<line->ncommands-1; i++){
@@ -416,6 +389,7 @@ int main(void) {
                 if(pid < 0){
                     fprintf(stderr, "Error al crear el hijo\n");
                 }else if (pid == 0){
+					// si es el primer mandato
                     if(i == 0){
                         if (line->redirect_input != NULL) {
                             printf("redirección de entrada: %s\n", line->redirect_input);
@@ -437,35 +411,39 @@ int main(void) {
                             close(fd[0]);
                         }
 
-
+						// se cierran todos los pipes menos los primeros
                         for( c = 1; c < line->ncommands-1; c++){
                             close(pipes[c][0]);
                             close(pipes[c][1]);
                         }
 
+						// cerramos el pipe que no se usa y la salida estandar y la sustituimos por el pipe
                         close(pipes[0][0]);
                         close(STDOUT_FILENO);
                         dup(pipes[0][1]);
                     }
 
+					// si es un mandato que no es el primero ni el ultimo
                     if (i > 0 && i < line->ncommands-1){
-
-
+						// cerramos todos los pipes menos los que se van a utilizar
                         for(c = 0; c < line->ncommands-1; c++){
                             if(c != i && c != i-1){
                                 close(pipes[c][0]);
                                 close(pipes[c][1]);
                             }
                         }
-                            close(pipes[i-1][1]);
-                            close(STDIN_FILENO);
-                            dup(pipes[i-1][0]);
+						// cerramos el pipe que no se usa y la entrada estandar y la sustituimos por el pipe
+                        close(pipes[i-1][1]);
+                        close(STDIN_FILENO);
+                        dup(pipes[i-1][0]);
 
-                            close(pipes[i][0]);
-                            close(STDOUT_FILENO);
-                            dup(pipes[i][1]);
+						// cerramos el pipe que no se usa y la salida estandar y la sustituimos por el pipe
+                        close(pipes[i][0]);
+                        close(STDOUT_FILENO);
+                        dup(pipes[i][1]);
                     }
 
+					// si es el último mandato
                     if(i == line->ncommands-1){
 
                         if (line->redirect_output != NULL) {
@@ -507,11 +485,13 @@ int main(void) {
                             close(fd[1]);
                         }
 
+						// cerramos todos los pipes menos el último
                         for( c = 0; c<line->ncommands-2; c++){
                             close(pipes[c][0]);
                             close(pipes[c][1]);
                         }
 
+						// cerramos el pipe que no se usa y la entrada estandar y la sustituimos por el pipe
                         close(pipes[i-1][1]);
                         close(STDIN_FILENO);
                         dup(pipes[i-1][0]);
@@ -519,15 +499,13 @@ int main(void) {
 					signal(SIGINT, SIG_DFL);
 					signal(SIGQUIT, SIG_DFL);
 
-
+					// se ejecuta el mandato correspondiente
                     if (execv(line->commands[i].filename, line->commands[i].argv) < 0){
-						salida = line->commands[i].argv[0];
-						strcat(salida, ": No se ha encontrado el mandato.\n");
-                        strcpy(buff, salida);
-                        fputs(buff, stderr);
+						fprintf(stderr, "%s: No se ha encontrado el mandato.\n", line->commands[0].argv[0]);
 						exit(1);
         			}
                 }else{
+						// se añaden todos los pids a hijos, para poder esperarlos después
 						hijos[i] = pid;
 				}
 
@@ -536,53 +514,60 @@ int main(void) {
 			if(line->background){
 				signal(SIGINT, SIG_IGN);
 				signal(SIGQUIT, SIG_IGN);
+				// reserva de memoria para almacenar los procesos en background
 				if(contadorProcesosBackground == 0){
-					//pids_bg = (int *) malloc(line->ncommands * sizeof(int));
 					procesoBackground = (tProcesoBackground *) malloc(line->ncommands * sizeof(int) + sizeof(tProcesoBackground));
 					procesosBackground = (tProcesoBackground **) malloc(sizeof(tProcesoBackground*));
 				}
 				else{
 					// REVISAR ESTA LINEA
 					procesoBackground = (tProcesoBackground *) malloc(line->ncommands * sizeof(int) + sizeof(tProcesoBackground));
-					//tProcesoBackground **tmp = (tProcesoBackground **) realloc(procesosBackground, (contadorProcesosBackground+1) * (sizeof(tProcesoBackground*) + sizeof(tProcesoBackground)));
 					tProcesoBackground **tmp = (tProcesoBackground **) realloc(procesosBackground, (contadorProcesosBackground+1) * sizeof(tProcesoBackground*));
 					procesosBackground = tmp;
-
 				}
+				// se asignan los datos correspondientes a la estructura procesoBackground para poder gestionarla después
 				procesosBackground[contadorProcesosBackground] = procesoBackground;
+				strcpy(procesosBackground[contadorProcesosBackground]->nombre, buf);
+				procesosBackground[contadorProcesosBackground]->n = contadorProcesosBackground;
+				procesosBackground[contadorProcesosBackground]->status = 0;
+				procesosBackground[contadorProcesosBackground]->n_mandatos = line->ncommands;
+				procesosBackground[contadorProcesosBackground]->pids = (int *) malloc(line->ncommands * sizeof(int));
 				contadorProcesosBackground++;
-				strcpy(procesosBackground[contadorProcesosBackground-1]->nombre, buf);
-				procesosBackground[contadorProcesosBackground-1]->n = contadorProcesosBackground;
-				procesosBackground[contadorProcesosBackground-1]->status = 0;
-				procesosBackground[contadorProcesosBackground-1]->n_mandatos = line->ncommands;
-				procesosBackground[contadorProcesosBackground-1]->pids = (int *) malloc(line->ncommands * sizeof(int));
 				for( a = 0; a<line->ncommands; a++){
-					procesosBackground[contadorProcesosBackground-1]->pids[a] = hijos[a];
+					procesosBackground[contadorProcesosBackground]->pids[a] = hijos[a];
 				}
+				// se cierran los pipes en el proceso padre
 				for( a = 0; a<line->ncommands-1; a++){
 	                close(pipes[a][1]);
 	                close(pipes[a][0]);
 	            }
+				// se imprime el numero del mandato y el pid del ultimo de los procesos
 				printf("[%d] %d\n", contadorProcesosBackground , procesosBackground[contadorProcesosBackground-1]->pids[line->ncommands-1]);
+				// sleep de 1 segundo por estética. Algunos procesos en background son rápidos
+				// en ejecutarse. Para que no salga el prompt en medio.
 				sleep(1);
-			}else{
+			}else{	// si no es background
+				// se cierran los pipes en el proceso padre
 				for( a = 0; a<line->ncommands-1; a++){
 	                close(pipes[a][1]);
 	                close(pipes[a][0]);
 	            }
+				// se espera por cada uno de los hijos
 				for(int k = 0; k<line->ncommands; k++){
 	                waitpid(hijos[k], &status, 0);
 	            }
             }
+
+			// se libera en memoria los pipes y los pids de los hijos
             free(pipes);
             free(hijos);
         }
 
-
+		// Por estética, para que salga el prompt en una nueva línea si
+		// un proceso ha sido interrumpido por una señal como CTRL + C
 		if(WIFSIGNALED(status)){
 			printf("\n");
 		}
-		status = 0;
         printf("msh> ");
     }
 	return 0;

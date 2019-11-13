@@ -1,0 +1,19 @@
+PING www.google.com (216.58.211.36) 56(84) bytes of data.
+64 bytes from mad08s05-in-f4.1e100.net (216.58.211.36): icmp_seq=1 ttl=56 time=66.5 ms
+64 bytes from mad08s05-in-f4.1e100.net (216.58.211.36): icmp_seq=2 ttl=56 time=7.79 ms
+64 bytes from mad08s05-in-f4.1e100.net (216.58.211.36): icmp_seq=3 ttl=56 time=7.22 ms
+64 bytes from mad08s05-in-f4.1e100.net (216.58.211.36): icmp_seq=4 ttl=56 time=6.86 ms
+64 bytes from mad08s05-in-f4.1e100.net (216.58.211.36): icmp_seq=5 ttl=56 time=7.84 ms
+64 bytes from mad08s05-in-f4.1e100.net (216.58.211.36): icmp_seq=6 ttl=56 time=6.28 ms
+64 bytes from mad08s05-in-f4.1e100.net (216.58.211.36): icmp_seq=7 ttl=56 time=7.67 ms
+64 bytes from mad08s05-in-f4.1e100.net (216.58.211.36): icmp_seq=8 ttl=56 time=4.92 ms
+64 bytes from mad08s05-in-f4.1e100.net (216.58.211.36): icmp_seq=9 ttl=56 time=23.8 ms
+64 bytes from mad08s05-in-f4.1e100.net (216.58.211.36): icmp_seq=10 ttl=56 time=7.30 ms
+64 bytes from mad08s05-in-f4.1e100.net (216.58.211.36): icmp_seq=11 ttl=56 time=5.74 ms
+64 bytes from mad08s05-in-f4.1e100.net (216.58.211.36): icmp_seq=12 ttl=56 time=5.14 ms
+64 bytes from mad08s05-in-f4.1e100.net (216.58.211.36): icmp_seq=13 ttl=56 time=5.10 ms
+64 bytes from mad08s05-in-f4.1e100.net (216.58.211.36): icmp_seq=14 ttl=56 time=10.5 ms
+
+--- www.google.com ping statistics ---
+14 packets transmitted, 14 received, 0% packet loss, time 13019ms
+rtt min/avg/max/mdev = 4.921/12.351/66.581/15.724 ms
