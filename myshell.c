@@ -214,23 +214,25 @@ int main(void) {
 
 
 		if(line->ncommands == 1 && strcmp(line->commands[0].argv[0],"fg")==0){
-			if(!(line->commands[0].argv[1] == NULL)){
-				int procesoBg = atoi(line->commands[0].argv[1]);
-				if(procesoBg > 0 && procesoBg <= contadorProcesosBackground){
-					for( a = 0; a<procesosBackground[procesoBg-1]->n_mandatos; a++){
-						printf("PID: %i\n", procesosBackground[procesoBg-1]->pids[a]);
-						waitpid(procesosBackground[procesoBg-1]->pids[a], NULL, 0);
+			if(contadorProcesosBackground > 0){
+				if(!(line->commands[0].argv[1] == NULL)){
+					int procesoBg = atoi(line->commands[0].argv[1]);
+					if(procesoBg > 0 && procesoBg <= contadorProcesosBackground){
+						for( a = 0; a<procesosBackground[procesoBg-1]->n_mandatos; a++){
+							printf("PID: %i\n", procesosBackground[procesoBg-1]->pids[a]);
+							waitpid(procesosBackground[procesoBg-1]->pids[a], NULL, 0);
+						}
+						procesosBackground[procesoBg-1]->status = 1;
+					}else{
+						printf("myshell: fg: %d: no existe ese trabajo\n", procesoBg);
 					}
-					procesosBackground[procesoBg-1]->status = 1;
 				}else{
-					printf("myshell: fg: %d: no existe ese trabajo\n", procesoBg);
+					for( a = 0; a<procesosBackground[contadorProcesosBackground-1]->n_mandatos; a++){
+						waitpid(procesosBackground[contadorProcesosBackground-1]->pids[a], NULL, 0);
+					}
+					procesosBackground[contadorProcesosBackground-1]->status = 1;
 				}
-			}else{
-				for( a = 0; a<procesosBackground[contadorProcesosBackground-1]->n_mandatos; a++){
-					waitpid(procesosBackground[contadorProcesosBackground-1]->pids[a], NULL, 0);
-				}
-				procesosBackground[contadorProcesosBackground-1]->status = 1;
-			}
+			}	
 			printf("msh> ");
 			continue;
 		}
