@@ -57,6 +57,7 @@ int main(void) {
     int contadorProcesosBackground = 0;
 
 	float n = 100000;
+	printf("\033[0;31m");
 	printf("\n\n\n     ██████╗ █████╗ ██████╗ ██╗ ██████╗      ██████╗ ███████╗\n");
 	usleep(n);
 	printf("    ██╔════╝██╔══██╗██╔══██╗██║██╔═══██╗    ██╔═══██╗██╔════╝\n");
@@ -69,6 +70,7 @@ int main(void) {
 	usleep(n);
 	printf("     ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝ ╚═════╝      ╚═════╝ ╚══════╝\n\n\n");
 	usleep(n);
+	printf("\033[0m");
 	printf("Práctica MINISHELL para Sistemas Operativos. Universidad Rey Juan Carlos.\n");
 	printf("Hecho por Carlos Sánchez Muñoz y Mario Manzaneque Ruiz. Noviembre de 2019.\n\n\n");
 
@@ -103,20 +105,22 @@ int main(void) {
 					if(waitpid(procesosBackground[a]->pids[b], &status, WNOHANG) != 0){
 						//printf("A\n");
 						if(WIFEXITED(status) != 0){
-							//printf("B\n");
+					//		printf("B\n");
 							if(WEXITSTATUS(status) != 0){	// para mandatos que salgan con error o no existan
-								//printf("C\n");
+					//			printf("C\n");
 								error_bg = 1;	// true
 								procesosBackground[a]->status = -1;
 								for( c = a; c<contadorProcesosBackground-1; c++){
 									procesosBackground[c] = procesosBackground[c+1];
 								}
-								free(procesosBackground[contadorProcesosBackground-1]);
+								free(procesosBackground[contadorProcesosBackground]);
 								if(contadorProcesosBackground>0)
 									contadorProcesosBackground--;
 							}else{
 								if(b == procesosBackground[a]->n_mandatos - 1)
 									procesosBackground[a]->status = 1;
+									printf("[%d]+   Done       %s", procesosBackground[a]->n, procesosBackground[a]->nombre);
+									procesosBackground[a]->status = -1;
 							}
 						}else{	// para mandatos que no han sido encontrados
 							//printf("D\n");
@@ -151,45 +155,24 @@ int main(void) {
                     fputs(buff, stderr);
 					//continue;
 				}else{
-
-						char auxbuf[2048];
-						strcpy(buffJobs, "");
-						for( a = 0; a<contadorProcesosBackground; a++){
-							if(procesosBackground[a]->status == 0){
-								sprintf(auxbuf, "[%d]+   Running    %s", procesosBackground[a]->n, procesosBackground[a]->nombre);
-								strcat(buffJobs, auxbuf);
-							}else if(procesosBackground[a]->status == 1){
-								sprintf(auxbuf,"[%d]+   Done       %s", procesosBackground[a]->n, procesosBackground[a]->nombre);
-								strcat(buffJobs, auxbuf);
-
-								//procesosBackground[a]->status = -1;
-								// se libera de memoria dinamica a este proceso ya que se ha indicado
-								for( c = a; c<contadorProcesosBackground-1; c++){
-									procesosBackground[c] = procesosBackground[c+1];
-								}
-								free(procesosBackground[a]);
-								if(contadorProcesosBackground>0)
-									contadorProcesosBackground--;
-							}
+					char auxbuf[2048];
+					strcpy(buffJobs, "");
+					for( a = 0; a<contadorProcesosBackground; a++){
+						if(procesosBackground[a]->status == 0){
+							sprintf(auxbuf, "[%d]+   Running    %s", procesosBackground[a]->n, procesosBackground[a]->nombre);
+							strcat(buffJobs, auxbuf);
 						}
-						jobsFile = open(line->redirect_output, O_WRONLY | O_CREAT | O_TRUNC, 0600);
-						write(jobsFile, buffJobs, 2048);
+					}
+					jobsFile = open(line->redirect_output, O_WRONLY | O_CREAT | O_TRUNC, 0600);
+					write(jobsFile, buffJobs, 2048);
 				}
-
             }else{
 				for( a = 0; a<contadorProcesosBackground; a++){
 					if(procesosBackground[a]->status == 0){
 						printf("[%d]+   Running    %s", procesosBackground[a]->n, procesosBackground[a]->nombre);
-					}else if(procesosBackground[a]->status == 1){
-						printf("[%d]+   Done       %s", procesosBackground[a]->n, procesosBackground[a]->nombre);
-						//AQUI SE ELIMINARIA DE LA LISTA EN DINAMICO, PONGO STATUS A -1 PARA QUE NO SALGA EN OTRO JOBS
-						procesosBackground[a]->status = -1;
-						free(procesosBackground[a]);
 					}
 				}
 			}
-
-
 			printf("msh> ");
 			continue;
 		}
