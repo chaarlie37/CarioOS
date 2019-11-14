@@ -18,6 +18,12 @@
 int pidFg;
 void manejador(int sig);
 
+void imprimirPrompt(){
+	printf("\033[1;34m");
+	printf("msh> ");
+	printf("\033[0m");
+}
+
 int main(void) {
 
 
@@ -60,7 +66,9 @@ int main(void) {
     int contadorProcesosBackground = 0;
 
 	float n = 100000;
-	printf("\033[0;31m");
+	printf("\033[0;36m");
+
+
 	printf("\n\n\n     ██████╗ █████╗ ██████╗ ██╗ ██████╗      ██████╗ ███████╗\n");
 	usleep(n);
 	printf("    ██╔════╝██╔══██╗██╔══██╗██║██╔═══██╗    ██╔═══██╗██╔════╝\n");
@@ -82,7 +90,7 @@ int main(void) {
 
 	signal(SIGINT, SIG_IGN);
 	signal(SIGQUIT, SIG_IGN);
-	printf("msh> ");
+	imprimirPrompt();
 	while (fgets(buf, 1024, stdin)) {
 
         line = tokenize(buf);
@@ -120,10 +128,11 @@ int main(void) {
 								if(contadorProcesosBackground>0)
 									contadorProcesosBackground--;
 							}else{
-								if(b == procesosBackground[a]->n_mandatos - 1)
+								if(b == procesosBackground[a]->n_mandatos - 1){
 									procesosBackground[a]->status = 1;
 									printf("[%d]+   Done       %s", procesosBackground[a]->n, procesosBackground[a]->nombre);
 									procesosBackground[a]->status = -1;
+								}
 							}
 						}else{	// para mandatos que no han sido encontrados
 							//printf("D\n");
@@ -176,7 +185,7 @@ int main(void) {
 					}
 				}
 			}
-			printf("msh> ");
+			imprimirPrompt();
 			continue;
 		}
 
@@ -208,7 +217,7 @@ int main(void) {
 					procesosBackground[contadorProcesosBackground-1]->status = 1;
 				}
 			}
-			printf("msh> ");
+			imprimirPrompt();
 			continue;
 		}
 
@@ -545,10 +554,11 @@ int main(void) {
 				procesosBackground[contadorProcesosBackground]->status = 0;
 				procesosBackground[contadorProcesosBackground]->n_mandatos = line->ncommands;
 				procesosBackground[contadorProcesosBackground]->pids = (int *) malloc(line->ncommands * sizeof(int));
-				contadorProcesosBackground++;
+
 				for( a = 0; a<line->ncommands; a++){
 					procesosBackground[contadorProcesosBackground]->pids[a] = hijos[a];
 				}
+				contadorProcesosBackground++;
 				// se cierran los pipes en el proceso padre
 				for( a = 0; a<line->ncommands-1; a++){
 	                close(pipes[a][1]);
@@ -581,7 +591,7 @@ int main(void) {
 		if(WIFSIGNALED(status)){
 			printf("\n");
 		}
-        printf("msh> ");
+        imprimirPrompt();
     }
 	return 0;
 }
