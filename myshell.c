@@ -371,7 +371,7 @@ int main(void) {
 					procesosBackground[contadorProcesosBackground]->pids = (int *) malloc(sizeof(int));
 					procesosBackground[contadorProcesosBackground]->pids[0] = pid;
 					strcpy(procesosBackground[contadorProcesosBackground]->nombre, buf);
-					procesosBackground[contadorProcesosBackground]->n = contadorProcesosBackground;
+					procesosBackground[contadorProcesosBackground]->n = contadorProcesosBackground + 1;
 					procesosBackground[contadorProcesosBackground]->status = 0;
 					procesosBackground[contadorProcesosBackground]->n_mandatos = 1;
 					contadorProcesosBackground++;
@@ -550,7 +550,7 @@ int main(void) {
 				// se asignan los datos correspondientes a la estructura procesoBackground para poder gestionarla después
 				procesosBackground[contadorProcesosBackground] = procesoBackground;
 				strcpy(procesosBackground[contadorProcesosBackground]->nombre, buf);
-				procesosBackground[contadorProcesosBackground]->n = contadorProcesosBackground;
+				procesosBackground[contadorProcesosBackground]->n = contadorProcesosBackground + 1;
 				procesosBackground[contadorProcesosBackground]->status = 0;
 				procesosBackground[contadorProcesosBackground]->n_mandatos = line->ncommands;
 				procesosBackground[contadorProcesosBackground]->pids = (int *) malloc(line->ncommands * sizeof(int));
