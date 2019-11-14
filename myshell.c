@@ -15,6 +15,9 @@
 // -estructura de procesos para el jobs
 // -Revisar mensajes y casos de error
 
+int pidFg;
+void manejador(int sig);
+
 int main(void) {
 
 
@@ -196,13 +199,17 @@ int main(void) {
 
 		// fg
 		if(line->ncommands == 1 && strcmp(line->commands[0].argv[0],"fg")==0){
+			signal(SIGINT, manejador);
+			signal(SIGQUIT, manejador);
 			if(contadorProcesosBackground > 0){
 				if(!(line->commands[0].argv[1] == NULL)){
 					int procesoBg = atoi(line->commands[0].argv[1]);
 					if(procesoBg > 0 && procesoBg <= contadorProcesosBackground){
 						for( a = 0; a<procesosBackground[procesoBg-1]->n_mandatos; a++){
 							printf("%s\n", procesosBackground[procesoBg-1]->nombre);
+							pidFg = procesosBackground[procesoBg-1]->pids[a];
 							waitpid(procesosBackground[procesoBg-1]->pids[a], NULL, 0);
+
 						}
 						// aqui se pone como status al procesoBG en 1 (Done) ya que le hemos esperado en el wait,
 						// por lo que ha terminado
@@ -212,6 +219,7 @@ int main(void) {
 					}
 				}else{
 					for( a = 0; a<procesosBackground[contadorProcesosBackground-1]->n_mandatos; a++){
+						pidFg = procesosBackground[contadorProcesosBackground-1]->pids[a];
 						waitpid(procesosBackground[contadorProcesosBackground-1]->pids[a], NULL, 0);
 					}
 					procesosBackground[contadorProcesosBackground-1]->status = 1;
@@ -593,4 +601,9 @@ int main(void) {
         printf("msh> ");
     }
 	return 0;
+}
+
+
+void manejador(int sig){
+	kill(pidFg, SIGKILL);
 }
