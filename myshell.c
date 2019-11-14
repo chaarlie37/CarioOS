@@ -60,6 +60,7 @@ int main(void) {
     int contadorProcesosBackground = 0;
 
 	float n = 100000;
+	printf("\033[0;31m");
 	printf("\n\n\n     ██████╗ █████╗ ██████╗ ██╗ ██████╗      ██████╗ ███████╗\n");
 	usleep(n);
 	printf("    ██╔════╝██╔══██╗██╔══██╗██║██╔═══██╗    ██╔═══██╗██╔════╝\n");
@@ -72,6 +73,7 @@ int main(void) {
 	usleep(n);
 	printf("     ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝ ╚═════╝      ╚═════╝ ╚══════╝\n\n\n");
 	usleep(n);
+	printf("\033[0m");
 	printf("Práctica MINISHELL para Sistemas Operativos. Universidad Rey Juan Carlos.\n");
 	printf("Hecho por Carlos Sánchez Muñoz y Mario Manzaneque Ruiz. Noviembre de 2019.\n\n\n");
 
