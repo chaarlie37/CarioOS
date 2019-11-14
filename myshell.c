@@ -19,7 +19,7 @@ int pidFg;
 void manejador(int sig);
 
 void imprimirPrompt(){
-	printf("\033[1;34m");
+	printf("\033[1;36m");
 	printf("msh> ");
 	printf("\033[0m");
 }
@@ -66,10 +66,10 @@ int main(void) {
     int contadorProcesosBackground = 0;
 
 	float n = 100000;
-	printf("\033[0;36m");
+	printf("\033[1;36m");
 
 
-	printf("\n\n\n     ██████╗ █████╗ ██████╗ ██╗ ██████╗      ██████╗ ███████╗\n");
+	printf("\n\n\n     ██████╗ █████╗ ██████╗ ██╗ ██████╗      ██████╗  ██████╗\n");
 	usleep(n);
 	printf("    ██╔════╝██╔══██╗██╔══██╗██║██╔═══██╗    ██╔═══██╗██╔════╝\n");
 	usleep(n);
@@ -77,16 +77,19 @@ int main(void) {
 	usleep(n);
 	printf("    ██║     ██╔══██║██╔══██╗██║██║   ██║    ██║   ██║╚════██║\n");
 	usleep(n);
-	printf("    ╚██████╗██║  ██║██║  ██║██║╚██████╔╝    ╚██████╔╝███████║\n");
+	printf("    ╚██████╗██║  ██║██║  ██║██║╚██████╔╝    ╚██████╔╝██████╔╝ \n");
 	usleep(n);
-	printf("     ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝ ╚═════╝      ╚═════╝ ╚══════╝\n\n\n");
+	printf("     ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝ ╚═════╝      ╚═════╝ ╚═════╝ \n\n\n");
 	usleep(n);
+
 	printf("\033[0m");
+	printf("\033[1m");
+	//printf("\033[1;37m");
+
 	printf("Práctica MINISHELL para Sistemas Operativos. Universidad Rey Juan Carlos.\n");
 	printf("Hecho por Carlos Sánchez Muñoz y Mario Manzaneque Ruiz. Noviembre de 2019.\n\n\n");
 
-
-
+	printf("\033[0m");
 
 	signal(SIGINT, SIG_IGN);
 	signal(SIGQUIT, SIG_IGN);
@@ -432,7 +435,7 @@ int main(void) {
                             close(fd[0]);
                         }
 
-						// se cierran todos los pipes menos los primeros
+						// se cierran todos los pipes menos el primero
                         for( c = 1; c < line->ncommands-1; c++){
                             close(pipes[c][0]);
                             close(pipes[c][1]);
@@ -453,12 +456,12 @@ int main(void) {
                                 close(pipes[c][1]);
                             }
                         }
-						// cerramos el pipe que no se usa y la entrada estandar y la sustituimos por el pipe
+						// cerramos el extremo del pipe que no se usa y la entrada estandar y la sustituimos por el pipe
                         close(pipes[i-1][1]);
                         close(STDIN_FILENO);
                         dup(pipes[i-1][0]);
 
-						// cerramos el pipe que no se usa y la salida estandar y la sustituimos por el pipe
+						// cerramos el extremo del pipe que no se usa y la salida estandar y la sustituimos por el pipe
                         close(pipes[i][0]);
                         close(STDOUT_FILENO);
                         dup(pipes[i][1]);
@@ -521,7 +524,7 @@ int main(void) {
 					signal(SIGQUIT, SIG_DFL);
 
 					// se ejecuta el mandato correspondiente
-                    if (execv(line->commands[i].filename, line->commands[i].argv) < 0){
+                    if (execvp(line->commands[i].filename, line->commands[i].argv) < 0){
 						fprintf(stderr, "%s: No se ha encontrado el mandato.\n", line->commands[0].argv[0]);
 						exit(1);
         			}
@@ -576,12 +579,15 @@ int main(void) {
 	                close(pipes[a][0]);
 	            }
 				// se espera por cada uno de los hijos
-				for(int k = 0; k<line->ncommands; k++){
-	                waitpid(hijos[k], &status, 0);
+				for(a = 0; a<line->ncommands; a++){
+	                waitpid(hijos[a], &status, 0);
 	            }
             }
 
 			// se libera en memoria los pipes y los pids de los hijos
+			for(a = 0; a<line->ncommands; a++){
+				free(pipes[a]);
+			}
             free(pipes);
             free(hijos);
         }
