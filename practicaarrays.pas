@@ -21,7 +21,7 @@ VAR
     writeln('El gasto de ', conceptos[c], ' en ', meses[m], ' es ', tabla[m, c]);
   END;
 
-  PROCEDURE mostrarGastoPorMeses();
+  PROCEDURE mostrarGastoPorMeses;
   VAR
     suma:integer;
     i:integer;
@@ -31,11 +31,11 @@ VAR
           suma := suma + tabla[m,c];
 
         END;
-        writeln('Gastos de ', meses[m]': ', suma);
+        writeln('Gastos de ', meses[m],': ', suma);
       END;
   END;
 
-  PROCEDURE mostrarGastoPorConceptos();
+  PROCEDURE mostrarGastoPorConceptos;
   VAR
     suma:integer;
     i:integer;
@@ -44,7 +44,7 @@ VAR
         FOR m := 1 TO 6 DO BEGIN
           suma := suma + tabla[m,c];
         END;
-        writeln('Gastos de ', conceptos[c]': ', suma);
+        writeln('Gastos de ', conceptos[c],': ', suma);
       END;
   END;
 
@@ -95,12 +95,10 @@ BEGIN
 
   write('Mes (como numero) :');
   readln(mes);
-  writeln("Pulse el numero...");
-  writeln('1: Textil...');
-
-
+  writeln('Pulse el numero del concepto que desee');
+  writeln('1: Textil''2:Automovil''3:Hogar''4:Jardineria''5:Ferretería''6:Jugueteria');
   read(concepto);
 
   mostrarGastoConceptoMes(mes,concepto);
-
+  readln();
 END.
