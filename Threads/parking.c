@@ -58,27 +58,29 @@ void *camionAparca(void *num){
                 }
             }
 
-            aparcamiento_plantas[i][j] = coche_id;
-            aparcamiento_plantas[i][j-1] = coche_id;
-            estado_coches[coche_id] = 1;
-            plazas_libres -= 2;
-            contador[coche_id % 100]++;
-            //pthread_mutex_unlock(&mutex[i]);
-            printf("ENTRADA: Camión %d aparca en %d y %d de planta %d. Plazas libres: %d.\n", coche_id, j-1, j, i, plazas_libres);
-            print_estado();
-            pthread_mutex_unlock(&mutexGen);
+            if(j<PLAZAS && aparcamiento_plantas[i][j-1] == 0 && aparcamiento_plantas[i][j] == 0){
+                aparcamiento_plantas[i][j] = coche_id;
+                aparcamiento_plantas[i][j-1] = coche_id;
+                estado_coches[coche_id] = 1;
+                plazas_libres -= 2;
+                contador[coche_id % 100]++;
+                //pthread_mutex_unlock(&mutex[i]);
+                printf("ENTRADA: Camión %d aparca en %d y %d de planta %d. Plazas libres: %d.\n", coche_id, j-1, j, i, plazas_libres);
+                print_estado();
+                pthread_mutex_unlock(&mutexGen);
 
-            sleep((rand() % 5 ) + 1);
+                sleep((rand() % 5 ) + 1);
 
-            pthread_mutex_lock(&mutexGen);
-            //pthread_mutex_lock(&mutex[i]);
-            aparcamiento_plantas[i][j] = 0;
-            aparcamiento_plantas[i][j-1] = 0;
-            estado_coches[coche_id] = 0;
-            plazas_libres += 2;
-            printf("SALIENDO: Camión %d saliendo. Plazas libres: %d.\n", coche_id, plazas_libres);
-            print_estado();
-            //pthread_mutex_unlock(&mutex[i]);
+                pthread_mutex_lock(&mutexGen);
+                //pthread_mutex_lock(&mutex[i]);
+                aparcamiento_plantas[i][j] = 0;
+                aparcamiento_plantas[i][j-1] = 0;
+                estado_coches[coche_id] = 0;
+                plazas_libres += 2;
+                printf("SALIENDO: Camión %d saliendo. Plazas libres: %d.\n", coche_id, plazas_libres);
+                print_estado();
+                //pthread_mutex_unlock(&mutex[i]);
+            }
         }
         pthread_mutex_unlock(&mutexGen);
         sleep((rand() % 10 ) + 1);
