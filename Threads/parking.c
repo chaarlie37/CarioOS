@@ -5,8 +5,8 @@
 
 
 #define COCHES 30
-#define CAMIONES 3
-#define PLAZAS 7
+#define CAMIONES 5
+#define PLAZAS 8
 #define PLANTAS 3
 int estado_coches[COCHES + CAMIONES];
 int aparcamiento_plantas[PLANTAS][PLAZAS];
@@ -53,7 +53,7 @@ void *camionAparca(void *num){
                         break;
                     }
                 }
-                if(aparcamiento_plantas[i][j-1] == 0 && aparcamiento_plantas[i][j] == 0){
+                if(j<PLAZAS && aparcamiento_plantas[i][j-1] == 0 && aparcamiento_plantas[i][j] == 0){
                     break;
                 }
             }
