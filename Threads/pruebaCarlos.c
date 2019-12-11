@@ -3,11 +3,12 @@
 #include <pthread.h>
 #include <unistd.h>
 
-
+/*
 #define COCHES 30
 #define CAMIONES 5
 #define PLAZAS 8
 #define PLANTAS 3
+
 int aparcamiento[PLANTAS][PLAZAS];
 
 int plazas_libres = PLAZAS * PLANTAS;
@@ -19,6 +20,24 @@ int contador[COCHES + CAMIONES];
 
 int coche_id[COCHES];
 int camion_id[CAMIONES];
+*/
+
+int COCHES;
+int CAMIONES;
+int PLAZAS;
+int PLANTAS;
+
+int ** aparcamiento;
+
+int plazas_libres;
+pthread_mutex_t mutex;
+pthread_cond_t * espera_coches;
+pthread_cond_t * espera_camiones;
+
+int * contador;
+
+int * coche_id;
+int * camion_id;
 
 // funcion para imprimir el estado del parking
 void print_estado(){
@@ -213,7 +232,48 @@ void * cocheAparca(void *num){
     }
 }
 
-int main(){
+
+int main(int argc, char *argv[]){
+
+    switch (argc){
+        case 3:
+
+                CAMIONES = 0;
+                PLAZAS = atoi(argv[1]);
+                COCHES = PLANTAS * PLAZAS * 2;
+                PLANTAS = atoi(argv[2]);
+        break;
+        case 4:
+                COCHES = atoi(argv[3]);
+                CAMIONES = 0;
+                PLAZAS = atoi(argv[1]);
+                PLANTAS = atoi(argv[2]);
+        break;
+        case 5:
+                COCHES = atoi(argv[3]);
+                CAMIONES = atoi(argv[4]);
+                PLAZAS = atoi(argv[1]);
+                PLANTAS = atoi(argv[2]);
+        break;
+        default:
+                COCHES = 30;
+                CAMIONES = 5;
+                PLAZAS = 7;
+                PLANTAS = 3;
+        break;
+    }
+
+
+    plazas_libres = PLAZAS * PLANTAS;
+    aparcamiento = (int **) malloc(PLANTAS * sizeof(int *));
+    for(int i = 0; i<PLANTAS; i++){
+        aparcamiento[i] = (int *) malloc(PLAZAS * sizeof(int));
+    }
+    espera_coches = malloc(COCHES * sizeof(pthread_cond_t));
+    espera_camiones = malloc(CAMIONES * sizeof(pthread_cond_t));
+    contador = malloc((COCHES +  CAMIONES) * sizeof(int));
+    coche_id = malloc(COCHES * sizeof(int));
+    camion_id = malloc(CAMIONES * sizeof(int));
 
     // array de threads de coches y de camiones (cada thread es un vehículo)
     pthread_t coches[COCHES];
