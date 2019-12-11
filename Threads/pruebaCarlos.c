@@ -8,28 +8,29 @@
 #define CAMIONES 5
 #define PLAZAS 8
 #define PLANTAS 3
-int aparcamiento_plantas[PLANTAS][PLAZAS];
-int aparcamiento[PLAZAS];
+int aparcamiento[PLANTAS][PLAZAS];
 
 int plazas_libres = PLAZAS * PLANTAS;
-pthread_mutex_t mutexGen;
-pthread_mutex_t mutex[PLAZAS];
+pthread_mutex_t mutex;
 pthread_cond_t espera_coches[COCHES];
 pthread_cond_t espera_camiones[CAMIONES];
 
-int contador[COCHES];
+int contador[COCHES + CAMIONES];
 
 int coche_id[COCHES];
 int camion_id[CAMIONES];
 
+// funcion para imprimir el estado del parking
 void print_estado(){
     printf("Parking: \n");
     for(int i = 0; i<PLANTAS; i++){
         for(int j = 0; j<PLAZAS; j++){
-            printf("[%d]", aparcamiento_plantas[i][j]);
+            printf("[%d]", aparcamiento[i][j]);
         }
         printf("\n");
     }
+    // (opcional para testear la inanicion)
+    // imprime el array "contadores" que almacena el número de veces que aparca cada vehículo
     printf("CONTADORES: \n");
     for(int i = 0; i<COCHES; i++){
         printf("[%d: %d]", coche_id[i], contador[i]);
@@ -45,7 +46,7 @@ void *camionAparca(void *num){
     int i,j;
     while(1){
         // se bloquea el mutex
-        pthread_mutex_lock(&mutexGen);
+        pthread_mutex_lock(&mutex);
         // se verifica que hay plazas libres para un camión (no vale sólo verificar que plazas_libres > 1 porque un Camión
         // necesita 2 contiguas y en la misma planta)
         int libres = 0;
@@ -54,11 +55,11 @@ void *camionAparca(void *num){
             int k = 0;
             for(o = 0; o<PLANTAS; o++){
                 for(k = 0; k<PLAZAS; k++){
-                    if(aparcamiento_plantas[o][k-1] == 0 && aparcamiento_plantas[o][k] == 0){
+                    if(aparcamiento[o][k-1] == 0 && aparcamiento[o][k] == 0){
                         libres = 1;
                     }
                 }
-                if(k<PLAZAS && aparcamiento_plantas[i][j-1] == 0 && aparcamiento_plantas[o][k] == 0){
+                if(k<PLAZAS && aparcamiento[i][j-1] == 0 && aparcamiento[o][k] == 0){
                     libres = 1;
                 }
             }
@@ -66,16 +67,16 @@ void *camionAparca(void *num){
 
         // mientras que no haya plazas libres, espera
         while(!libres){
-            pthread_cond_wait(&espera_camiones[camion_id - 1], &mutexGen);
+            pthread_cond_wait(&espera_camiones[camion_id - 1], &mutex);
             libres = 1;
             /*
             for(o = 0; o<PLANTAS; o++){
                 for(k = 0; k<PLAZAS; k++){
-                    if(aparcamiento_plantas[o][k-1] == 0 && aparcamiento_plantas[o][k] == 0){
+                    if(aparcamiento[o][k-1] == 0 && aparcamiento[o][k] == 0){
                         libres = 1;
                     }
                 }
-                if(k<PLAZAS && aparcamiento_plantas[i][j-1] == 0 && aparcamiento_plantas[o][k] == 0){
+                if(k<PLAZAS && aparcamiento[i][j-1] == 0 && aparcamiento[o][k] == 0){
                     libres = 1;
                 }
             }
@@ -87,20 +88,20 @@ void *camionAparca(void *num){
             // se recorre el parking hasta encontrar las 2 primeras plazas libres para aparcar
             for(i = 0 ; i<PLANTAS; i++){
                 for(j = 1; j<PLAZAS; j++){
-                    if(aparcamiento_plantas[i][j-1] == 0 && aparcamiento_plantas[i][j] == 0){
+                    if(aparcamiento[i][j-1] == 0 && aparcamiento[i][j] == 0){
                         break;
                     }
                 }
-                if(j<PLAZAS && aparcamiento_plantas[i][j-1] == 0 && aparcamiento_plantas[i][j] == 0){
+                if(j<PLAZAS && aparcamiento[i][j-1] == 0 && aparcamiento[i][j] == 0){
                     break;
                 }
             }
 
             // una vez encontradas las plazas, proceso de aparcar y de salir del parking
-            if(j<PLAZAS && aparcamiento_plantas[i][j-1] == 0 && aparcamiento_plantas[i][j] == 0){
+            if(j<PLAZAS && aparcamiento[i][j-1] == 0 && aparcamiento[i][j] == 0){
                 // se aparca
-                aparcamiento_plantas[i][j] = camion_id + 100;
-                aparcamiento_plantas[i][j-1] = camion_id + 100;
+                aparcamiento[i][j] = camion_id + 100;
+                aparcamiento[i][j-1] = camion_id + 100;
                 plazas_libres -= 2;
                 // contador para verificar la inanicion
                 contador[camion_id - 1 + COCHES]++;
@@ -108,13 +109,13 @@ void *camionAparca(void *num){
                 printf("ENTRADA: Camión %d aparca en %d y %d de planta %d. Plazas libres: %d.\n", camion_id + 100, j-1, j, i, plazas_libres);
                 print_estado();
                 // se libera el mutex una vez aparcado y se espera un tiempo aleatorio
-                pthread_mutex_unlock(&mutexGen);
+                pthread_mutex_unlock(&mutex);
                 sleep((rand()%10)+1 );
                 // una vez transcurrido el tiempo aleatorio, se bloquea el mutex para salir del parking
-                pthread_mutex_lock(&mutexGen);
+                pthread_mutex_lock(&mutex);
                 // se dejan las plazas con el valor 0 = libre
-                aparcamiento_plantas[i][j] = 0;
-                aparcamiento_plantas[i][j-1] = 0;
+                aparcamiento[i][j] = 0;
+                aparcamiento[i][j-1] = 0;
                 plazas_libres += 2;
                 // se indica por pantalla y se muestra el estado nuevo del parking
                 printf("SALIENDO: Camión %d saliendo. Plazas libres: %d.\n", camion_id + 100, plazas_libres);
@@ -130,7 +131,7 @@ void *camionAparca(void *num){
             pthread_cond_signal(&espera_camiones[i]);
         }
         // se libera el mutex y el camión espera un tiempo aleatorio fuera del parking para volver a entrar
-        pthread_mutex_unlock(&mutexGen);
+        pthread_mutex_unlock(&mutex);
         sleep((rand() % 10 ) + 1);
     }
 }
@@ -141,25 +142,25 @@ void * cocheAparca(void *num){
     int i,j;
     while(1){
         // se bloquea el mutex
-        pthread_mutex_lock(&mutexGen);
+        pthread_mutex_lock(&mutex);
         // mientras que no haya plazas libres, espera
         while(plazas_libres == 0){
-            pthread_cond_wait(&espera_coches[coche_id - 1], &mutexGen);
+            pthread_cond_wait(&espera_coches[coche_id - 1], &mutex);
         }
         if(plazas_libres > 0){
             // se recorre el parking hasta encontrar la primera plaza libre para aparcar
             for(i = 0 ; i<PLANTAS; i++){
                 for(j = 0; j<PLAZAS; j++){
-                    if(aparcamiento_plantas[i][j] == 0){
+                    if(aparcamiento[i][j] == 0){
                         break;
                     }
                 }
-                if(aparcamiento_plantas[i][j] == 0){
+                if(aparcamiento[i][j] == 0){
                     break;
                 }
             }
             // una vez encontradas las plazas, aparca
-            aparcamiento_plantas[i][j] = coche_id;
+            aparcamiento[i][j] = coche_id;
             plazas_libres -= 1;
             // contador para verificar la inanicion
             contador[coche_id - 1]++;
@@ -167,12 +168,12 @@ void * cocheAparca(void *num){
             printf("ENTRADA: coche %d aparca en %d de la planta %d. Plazas libres: %d.\n", coche_id, j, i, plazas_libres);
             print_estado();
             // se libera el mutex una vez aparcado y se espera un tiempo aleatorio
-            pthread_mutex_unlock(&mutexGen);
+            pthread_mutex_unlock(&mutex);
             sleep((rand() % 10 ) + 1);
             // una vez transcurrido el tiempo aleatorio, se bloquea el mutex para salir del parking
-            pthread_mutex_lock(&mutexGen);
+            pthread_mutex_lock(&mutex);
             // se dejan las plazas con el valor 0 = libre
-            aparcamiento_plantas[i][j] = 0;
+            aparcamiento[i][j] = 0;
             plazas_libres += 1;
             // se indica por pantalla y se muestra el estado nuevo del parking
             printf("SALIENDO: Coche %d saliendo. Plazas libres: %d.\n", coche_id, plazas_libres);
@@ -190,12 +191,12 @@ void * cocheAparca(void *num){
             int k = 0;
             for(o = 0; o<PLANTAS; o++){
                 for(k = 1; k<PLAZAS; k++){
-                    if(aparcamiento_plantas[o][k-1] == 0 && aparcamiento_plantas[o][k] == 0){
+                    if(aparcamiento[o][k-1] == 0 && aparcamiento[o][k] == 0){
                         libres = 1;
                         break;
                     }
                 }
-                if(k<PLAZAS && aparcamiento_plantas[o][k-1] == 0 && aparcamiento_plantas[o][k] == 0){
+                if(k<PLAZAS && aparcamiento[o][k-1] == 0 && aparcamiento[o][k] == 0){
                     libres = 1;
                     break;
                 }
@@ -207,23 +208,23 @@ void * cocheAparca(void *num){
             }
         }
         // se libera el mutex y el camión espera un tiempo aleatorio fuera del parking para volver a entrar
-        pthread_mutex_unlock(&mutexGen);
+        pthread_mutex_unlock(&mutex);
         sleep((rand() % 5 ) + 1);
     }
 }
 
 int main(){
-    
+
     // array de threads de coches y de camiones (cada thread es un vehículo)
     pthread_t coches[COCHES];
     pthread_t camiones[CAMIONES];
     int i, j;
     // se inicializa el mutex
-    pthread_mutex_init(&mutexGen, NULL);
+    pthread_mutex_init(&mutex, NULL);
     // se inicializa la matriz que simula el parking
     for(i = 0; i<PLANTAS; i++){
         for(j = 0; j<PLAZAS; j++){
-            aparcamiento_plantas[i][j] = 0;
+            aparcamiento[i][j] = 0;
         }
     }
 
