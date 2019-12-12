@@ -2,7 +2,7 @@
 TODO:
  - adaptarlo para cuando haya mas de 100 coches que no se pisoteen los id con los camiones
 
-/
+*/
 
 
 #include <stdio.h>
