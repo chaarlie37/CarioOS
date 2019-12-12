@@ -1,3 +1,10 @@
+/*
+TODO:
+ - adaptarlo para cuando haya mas de 100 coches que no se pisoteen los id con los camiones
+
+/
+
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
@@ -174,13 +181,13 @@ void * cocheAparca(void *num){
                         break;
                     }
                 }
-                if(aparcamiento[i][j] == 0){
+                if(j < PLAZAS && aparcamiento[i][j] == 0){
                     break;
                 }
             }
             // una vez encontradas las plazas, aparca
             aparcamiento[i][j] = coche_id;
-            plazas_libres -= 1;
+            plazas_libres--;
             // contador para verificar la inanicion
             contador[coche_id - 1]++;
             // se imprime la accion de aparcar y el estado del parking
@@ -193,7 +200,7 @@ void * cocheAparca(void *num){
             pthread_mutex_lock(&mutex);
             // se dejan las plazas con el valor 0 = libre
             aparcamiento[i][j] = 0;
-            plazas_libres += 1;
+            plazas_libres++;
             // se indica por pantalla y se muestra el estado nuevo del parking
             printf("SALIENDO: Coche %d saliendo. Plazas libres: %d.\n", coche_id, plazas_libres);
             print_estado();
@@ -228,7 +235,7 @@ void * cocheAparca(void *num){
         }
         // se libera el mutex y el camión espera un tiempo aleatorio fuera del parking para volver a entrar
         pthread_mutex_unlock(&mutex);
-        sleep((rand() % 5 ) + 1);
+        sleep((rand() % 10 ) + 1);
     }
 }
 
@@ -240,8 +247,8 @@ int main(int argc, char *argv[]){
 
                 CAMIONES = 0;
                 PLAZAS = atoi(argv[1]);
-                COCHES = PLANTAS * PLAZAS * 2;
                 PLANTAS = atoi(argv[2]);
+                COCHES = PLANTAS * PLAZAS * 2;
         break;
         case 4:
                 COCHES = atoi(argv[3]);
