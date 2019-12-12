@@ -1,33 +1,9 @@
-/*
-TODO:
- - adaptarlo para cuando haya mas de 100 coches que no se pisoteen los id con los camiones
-
-*/
-
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
 #include <unistd.h>
+#include <math.h>
 
-/*
-#define COCHES 30
-#define CAMIONES 5
-#define PLAZAS 8
-#define PLANTAS 3
-
-int aparcamiento[PLANTAS][PLAZAS];
-
-int plazas_libres = PLAZAS * PLANTAS;
-pthread_mutex_t mutex;
-pthread_cond_t espera_coches[COCHES];
-pthread_cond_t espera_camiones[CAMIONES];
-
-int contador[COCHES + CAMIONES];
-
-int coche_id[COCHES];
-int camion_id[CAMIONES];
-*/
 
 int COCHES;
 int CAMIONES;
@@ -41,44 +17,46 @@ pthread_mutex_t mutex;
 pthread_cond_t * espera_coches;
 pthread_cond_t * espera_camiones;
 
-int * contador;
-
 int * coche_id;
 int * camion_id;
 
+int * contador;
+int offset_camiones;
+
 // funcion para imprimir el estado del parking
 void print_estado(){
+    int i,j;
     printf("Parking: \n");
-    for(int i = 0; i<PLANTAS; i++){
-        for(int j = 0; j<PLAZAS; j++){
+    for(i = 0; i<PLANTAS; i++){
+        for(j = 0; j<PLAZAS; j++){
             printf("[%d]", aparcamiento[i][j]);
         }
         printf("\n");
     }
     // (opcional para testear la inanicion)
     // imprime el array "contadores" que almacena el número de veces que aparca cada vehículo
+    /*
     printf("CONTADORES: \n");
-    for(int i = 0; i<COCHES; i++){
+    for(i = 0; i<COCHES; i++){
         printf("[%d: %d]", coche_id[i], contador[i]);
     }
-    for(int i = 0; i<CAMIONES; i++){
-        printf("[%d: %d]", camion_id[i] + 100, contador[i + COCHES]);
+    for(i = 0; i<CAMIONES; i++){
+        printf("[%d: %d]", camion_id[i] + offset_camiones, contador[i + COCHES]);
     }
+    */
     printf("\n\n");
 }
 
 void *camionAparca(void *num){
     int camion_id = *(int *) num;   // identificador del camión que se mostrará en el parking
-    int i,j;
+    int i,j,o,k,libres;
     while(1){
         // se bloquea el mutex
         pthread_mutex_lock(&mutex);
         // se verifica que hay plazas libres para un camión (no vale sólo verificar que plazas_libres > 1 porque un Camión
         // necesita 2 contiguas y en la misma planta)
-        int libres = 0;
+        libres = 0;
         if(plazas_libres > 1){
-            int o = 0;
-            int k = 0;
             for(o = 0; o<PLANTAS; o++){
                 for(k = 0; k<PLAZAS; k++){
                     if(aparcamiento[o][k-1] == 0 && aparcamiento[o][k] == 0){
@@ -95,22 +73,9 @@ void *camionAparca(void *num){
         while(!libres){
             pthread_cond_wait(&espera_camiones[camion_id - 1], &mutex);
             libres = 1;
-            /*
-            for(o = 0; o<PLANTAS; o++){
-                for(k = 0; k<PLAZAS; k++){
-                    if(aparcamiento[o][k-1] == 0 && aparcamiento[o][k] == 0){
-                        libres = 1;
-                    }
-                }
-                if(k<PLAZAS && aparcamiento[i][j-1] == 0 && aparcamiento[o][k] == 0){
-                    libres = 1;
-                }
-            }
-            */
         }
 
         if(plazas_libres > 1){
-
             // se recorre el parking hasta encontrar las 2 primeras plazas libres para aparcar
             for(i = 0 ; i<PLANTAS; i++){
                 for(j = 1; j<PLAZAS; j++){
@@ -126,13 +91,13 @@ void *camionAparca(void *num){
             // una vez encontradas las plazas, proceso de aparcar y de salir del parking
             if(j<PLAZAS && aparcamiento[i][j-1] == 0 && aparcamiento[i][j] == 0){
                 // se aparca
-                aparcamiento[i][j] = camion_id + 100;
-                aparcamiento[i][j-1] = camion_id + 100;
+                aparcamiento[i][j] = camion_id + offset_camiones;
+                aparcamiento[i][j-1] = camion_id + offset_camiones;
                 plazas_libres -= 2;
                 // contador para verificar la inanicion
                 contador[camion_id - 1 + COCHES]++;
                 // se imprime la accion de aparcar y el estado del parking
-                printf("ENTRADA: Camión %d aparca en %d y %d de planta %d. Plazas libres: %d.\n", camion_id + 100, j-1, j, i, plazas_libres);
+                printf("ENTRADA: Camión %d aparca en %d y %d de planta %d. Plazas libres: %d.\n", camion_id + offset_camiones, j-1, j, i, plazas_libres);
                 print_estado();
                 // se libera el mutex una vez aparcado y se espera un tiempo aleatorio
                 pthread_mutex_unlock(&mutex);
@@ -144,16 +109,16 @@ void *camionAparca(void *num){
                 aparcamiento[i][j-1] = 0;
                 plazas_libres += 2;
                 // se indica por pantalla y se muestra el estado nuevo del parking
-                printf("SALIENDO: Camión %d saliendo. Plazas libres: %d.\n", camion_id + 100, plazas_libres);
+                printf("SALIENDO: Camión %d saliendo. Plazas libres: %d.\n", camion_id + offset_camiones, plazas_libres);
                 print_estado();
             }
         }
 
         // una vez el camión sale del parking indica al resto de vehículos que estén esperando que hay plazas disponibles
-        for(int i = 0; i< COCHES; i++){
+        for(i = 0; i< COCHES; i++){
             pthread_cond_signal(&espera_coches[i]);
         }
-        for(int i = 0; i<CAMIONES; i++){
+        for(i = 0; i<CAMIONES; i++){
             pthread_cond_signal(&espera_camiones[i]);
         }
         // se libera el mutex y el camión espera un tiempo aleatorio fuera del parking para volver a entrar
@@ -165,7 +130,7 @@ void *camionAparca(void *num){
 void * cocheAparca(void *num){
     // identificador del camión que se mostrará en el parking
     int coche_id = *(int *) num;
-    int i,j;
+    int i,j,o,k,libres;
     while(1){
         // se bloquea el mutex
         pthread_mutex_lock(&mutex);
@@ -207,14 +172,11 @@ void * cocheAparca(void *num){
 
             // una vez el camión sale del parking indica al resto de coches que estén esperando que hay plazas disponibles
             // (no se indica a los camiones ya que al salir un coche deja sólo una plaza libre)
-            for(int i = 0; i<COCHES; i++){
+            for(i = 0; i<COCHES; i++){
                 pthread_cond_signal(&espera_coches[i]);
             }
 
             // se comprueba si hay plazas libres para un camión y avisa a los que estén esperando
-            int libres = 0;
-            int o = 0;
-            int k = 0;
             for(o = 0; o<PLANTAS; o++){
                 for(k = 1; k<PLAZAS; k++){
                     if(aparcamiento[o][k-1] == 0 && aparcamiento[o][k] == 0){
@@ -228,7 +190,7 @@ void * cocheAparca(void *num){
                 }
             }
             if(libres){
-                for(int i = 0; i<CAMIONES; i++){
+                for(i = 0; i<CAMIONES; i++){
                     pthread_cond_signal(&espera_camiones[i]);
                 }
             }
@@ -242,38 +204,47 @@ void * cocheAparca(void *num){
 
 int main(int argc, char *argv[]){
 
+    int i,j;
+    int digitos;
+    int aux;
+
+    // array de threads de coches y de camiones (cada thread es un vehículo)
+    pthread_t * coches;
+    pthread_t * camiones;
+
     switch (argc){
         case 3:
-
                 CAMIONES = 0;
                 PLAZAS = atoi(argv[1]);
                 PLANTAS = atoi(argv[2]);
                 COCHES = PLANTAS * PLAZAS * 2;
         break;
         case 4:
-                COCHES = atoi(argv[3]);
                 CAMIONES = 0;
+                COCHES = atoi(argv[3]);
                 PLAZAS = atoi(argv[1]);
                 PLANTAS = atoi(argv[2]);
         break;
         case 5:
-                COCHES = atoi(argv[3]);
-                CAMIONES = atoi(argv[4]);
                 PLAZAS = atoi(argv[1]);
                 PLANTAS = atoi(argv[2]);
+                COCHES = atoi(argv[3]);
+                CAMIONES = atoi(argv[4]);
         break;
         default:
-                COCHES = 30;
-                CAMIONES = 5;
-                PLAZAS = 7;
-                PLANTAS = 3;
+                printf("Error. Introduce como argumentos PLAZAS PLANTAS, o PLAZAS PLANTAS COCHES, o PLAZAS PLANTAS COCHES CAMIONES.\n");
+                exit(1);
         break;
     }
 
+    if(PLAZAS == 0 || PLANTAS == 0){
+        printf("Error. El valor PLAZAS y PLANTAS debe ser mayor que 0.\n");
+        exit(2);
+    }
 
     plazas_libres = PLAZAS * PLANTAS;
     aparcamiento = (int **) malloc(PLANTAS * sizeof(int *));
-    for(int i = 0; i<PLANTAS; i++){
+    for(i = 0; i<PLANTAS; i++){
         aparcamiento[i] = (int *) malloc(PLAZAS * sizeof(int));
     }
     espera_coches = malloc(COCHES * sizeof(pthread_cond_t));
@@ -281,11 +252,25 @@ int main(int argc, char *argv[]){
     contador = malloc((COCHES +  CAMIONES) * sizeof(int));
     coche_id = malloc(COCHES * sizeof(int));
     camion_id = malloc(CAMIONES * sizeof(int));
+    coches = malloc(COCHES * sizeof(pthread_t));
+    camiones = malloc(CAMIONES * sizeof(pthread_t));
 
-    // array de threads de coches y de camiones (cada thread es un vehículo)
-    pthread_t coches[COCHES];
-    pthread_t camiones[CAMIONES];
-    int i, j;
+    // cálculo de cuántos dígitos tiene el número de coches para que los ID de los camiones tenga un dígito más por lo menos
+    // para diferenciar los IDs de coches y de camiones
+    // es para cuando hay +100 coches, los IDs de los camiones sean a partir del 1001
+
+    digitos = 1;
+    aux = COCHES;
+    while(aux / 10 >= 1){
+        digitos++;
+        aux = aux / 10;
+    }
+    offset_camiones = 1;
+    for(i = 0; i<digitos; i++){
+        offset_camiones = offset_camiones * 10;
+    }
+
+
     // se inicializa el mutex
     pthread_mutex_init(&mutex, NULL);
     // se inicializa la matriz que simula el parking
@@ -298,7 +283,7 @@ int main(int argc, char *argv[]){
     // se inicializan los coches
     for(i = 0; i<COCHES; i++){
         pthread_cond_init(&espera_coches[i],  NULL);
-        coche_id[i] = i+1;
+        coche_id[i] = i + 1;
         pthread_create(&coches[i], NULL, cocheAparca, (void *) &coche_id[i]);
     }
 
