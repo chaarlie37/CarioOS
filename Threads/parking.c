@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <unistd.h>
-#include <math.h>
 
 
 int COCHES;
@@ -101,7 +100,7 @@ void *camionAparca(void *num){
                 print_estado();
                 // se libera el mutex una vez aparcado y se espera un tiempo aleatorio
                 pthread_mutex_unlock(&mutex);
-                sleep((rand()%10)+1 );
+                sleep((rand()%5)+1 );
                 // una vez transcurrido el tiempo aleatorio, se bloquea el mutex para salir del parking
                 pthread_mutex_lock(&mutex);
                 // se dejan las plazas con el valor 0 = libre
@@ -160,7 +159,7 @@ void * cocheAparca(void *num){
             print_estado();
             // se libera el mutex una vez aparcado y se espera un tiempo aleatorio
             pthread_mutex_unlock(&mutex);
-            sleep((rand() % 10 ) + 1);
+            sleep((rand() % 5 ) + 1);
             // una vez transcurrido el tiempo aleatorio, se bloquea el mutex para salir del parking
             pthread_mutex_lock(&mutex);
             // se dejan las plazas con el valor 0 = libre
